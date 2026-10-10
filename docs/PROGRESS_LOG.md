@@ -1,4 +1,4 @@
-# WanderRoom — Progress Log
+# WayMark — Progress Log
 
 > **Rule**: Append a log entry after EVERY agent response. Read this file in full before every response.
 
@@ -736,6 +736,23 @@ _(ideas out of scope, to be added here rather than in code)_
 - Verified: `npm run build` completed cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
 - Blockers / waiting on user: None.
 - Next: User verification in browser.
+
+### Entry 40 | Brand & Codebase Cleanup | Comprehensive WayMark Rebrand
+- Time: Post-Phase 5
+- User request: "change the project name to WayMark. Everywhere that wanderroom is present replace with waymark"
+- Done:
+  - **Replaced All Active Project Occurrences:**
+    - [README.md](file:///d:/Projects/Layover/README.md): Title and headers updated to `# WayMark 🗺️`.
+    - [package.json](file:///d:/Projects/Layover/package.json) & [package-lock.json](file:///d:/Projects/Layover/package-lock.json): Package name set to `"waymark"`.
+    - [src/pages/Home.tsx](file:///d:/Projects/Layover/src/pages/Home.tsx): Cleaned `localStorage` keys to use `waymark_recent_trips`.
+    - [src/pages/Room.tsx](file:///d:/Projects/Layover/src/pages/Room.tsx): Cleaned `localStorage` keys to use `waymark_sidebar_width`.
+    - [src/hooks/useRoom.ts](file:///d:/Projects/Layover/src/hooks/useRoom.ts) & [src/components/MyTripsModal.tsx](file:///d:/Projects/Layover/src/components/MyTripsModal.tsx): Replaced old fallback keys with `waymark_recent_trips`.
+    - [supabase/migrations/001_init.sql](file:///d:/Projects/Layover/supabase/migrations/001_init.sql): Schema comment updated to `-- WayMark: Initial database schema`.
+    - [docs/MASTER_DOC.md](file:///d:/Projects/Layover/docs/MASTER_DOC.md) & [docs/PROGRESS_LOG.md](file:///d:/Projects/Layover/docs/PROGRESS_LOG.md): Updated document titles to `WayMark`.
+- Verified: `npm run build` completed cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+- Blockers / waiting on user: None.
+- Next: Project is fully rebranded to WayMark.
+
 
 
 

@@ -80,7 +80,7 @@ export default function Room() {
   const MIN_SIDEBAR_WIDTH = 300;
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem('waymark_sidebar_width') || localStorage.getItem('wanderroom_sidebar_width');
+      const saved = localStorage.getItem('waymark_sidebar_width');
       if (saved) {
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed) && parsed >= MIN_SIDEBAR_WIDTH && parsed <= 900) {

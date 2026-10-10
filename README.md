@@ -1,4 +1,4 @@
-# WanderRoom 🗺️
+# WayMark 🗺️
 
 > **Real-time collaborative group trip planner** — built for group trips in India.
 

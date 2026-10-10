@@ -137,7 +137,7 @@ export async function updateRoomDestination(
 export async function deleteRoom(roomId: string): Promise<void> {
   // Always clean from local storage
   try {
-    const stored = localStorage.getItem('waymark_recent_trips') || localStorage.getItem('wanderroom_recent_trips');
+    const stored = localStorage.getItem('waymark_recent_trips');
     if (stored) {
       const filtered = JSON.parse(stored).filter((t: any) => t.id !== roomId);
       localStorage.setItem('waymark_recent_trips', JSON.stringify(filtered));

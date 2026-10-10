@@ -1,4 +1,4 @@
-# WanderRoom — Master Document
+# WayMark — Master Document
 
 > **Rule**: The agent reads this file in full before every response. Never rely on chat history alone.
 

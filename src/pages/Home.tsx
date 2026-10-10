@@ -42,7 +42,7 @@ export default function Home() {
 
       // 1. Load from localStorage (recent visits)
       try {
-        const stored = localStorage.getItem('waymark_recent_trips') || localStorage.getItem('wanderroom_recent_trips');
+        const stored = localStorage.getItem('waymark_recent_trips');
         if (stored) {
           const parsed: SavedTrip[] = JSON.parse(stored);
           parsed.forEach((t) => {

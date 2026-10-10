@@ -1,4 +1,4 @@
--- WanderRoom: Initial database schema
+-- WayMark: Initial database schema
 -- Run this in Supabase SQL Editor at Manual Break 2
 
 create table profiles (

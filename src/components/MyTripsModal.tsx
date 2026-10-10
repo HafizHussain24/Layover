@@ -41,7 +41,7 @@ export default function MyTripsModal({ isOpen, onClose, currentRoomId }: MyTrips
 
       // 1. Load from localStorage (recent visits)
       try {
-        const stored = localStorage.getItem('waymark_recent_trips') || localStorage.getItem('wanderroom_recent_trips');
+        const stored = localStorage.getItem('waymark_recent_trips');
         if (stored) {
           const parsed: TripItem[] = JSON.parse(stored);
           parsed.forEach((t) => {
