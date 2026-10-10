@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import type { ProposedRoute, BucketLocation } from '../lib/types';
 import { getCategoryColor, getCategoryIcon } from '../lib/categories';
+import { computeRoutes } from '../lib/routes';
 import {
   Car, Footprints, Ruler, ChevronDown, ChevronUp,
-  Trophy, MapPin, Pencil, Trash2, ExternalLink, ArrowUp,
+  Trophy, MapPin, Pencil, Trash2, ExternalLink, ArrowUp, Loader2,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
 
@@ -17,6 +18,7 @@ interface ProposedRoutesProps {
   onSelectRoute: (route: ProposedRoute | null) => void;
   selectedRouteId: string | null;
   onEditRoute?: (route: ProposedRoute) => void;
+  onUpdateRoute?: (routeId: string, updates: Partial<ProposedRoute>) => Promise<void> | void;
   onDeleteRoute?: (routeId: string) => Promise<void> | void;
   bucketItems?: BucketLocation[];
 }
@@ -27,10 +29,51 @@ export default function ProposedRoutes({
   onSelectRoute,
   selectedRouteId,
   onEditRoute,
+  onUpdateRoute,
   onDeleteRoute,
   bucketItems = [],
 }: ProposedRoutesProps) {
   const [expandedRouteIds, setExpandedRouteIds] = useState<Set<string>>(new Set());
+  const [togglingRouteId, setTogglingRouteId] = useState<string | null>(null);
+
+  const handleToggleTravelMode = async (route: ProposedRoute, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (togglingRouteId || !onUpdateRoute) return;
+
+    const newMode: 'DRIVE' | 'WALK' = route.travel_mode === 'DRIVE' ? 'WALK' : 'DRIVE';
+    setTogglingRouteId(route.id);
+
+    try {
+      const matchedStops: BucketLocation[] = [];
+      for (const stopId of route.waypoint_order) {
+        const item = bucketItems.find(b => b.id === stopId || b.place_id === stopId);
+        if (item) matchedStops.push(item);
+      }
+
+      if (matchedStops.length >= 2) {
+        const res = await computeRoutes({
+          origin: { placeId: matchedStops[0].place_id, lat: matchedStops[0].lat, lng: matchedStops[0].lng },
+          destination: { placeId: matchedStops[matchedStops.length - 1].place_id, lat: matchedStops[matchedStops.length - 1].lat, lng: matchedStops[matchedStops.length - 1].lng },
+          intermediates: matchedStops.slice(1, -1).map(s => ({ placeId: s.place_id, lat: s.lat, lng: s.lng })),
+          travelMode: newMode,
+        });
+
+        if (res.routes && res.routes.length > 0) {
+          const comp = res.routes[0];
+          await onUpdateRoute(route.id, {
+            travel_mode: newMode,
+            total_duration_mins: Math.round(parseInt(comp.duration) / 60),
+            total_distance_m: comp.distanceMeters,
+            encoded_polyline: comp.polyline.encodedPolyline,
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle travel mode:', err);
+    } finally {
+      setTogglingRouteId(null);
+    }
+  };
 
   useEffect(() => {
     if (selectedRouteId) {
@@ -175,13 +218,42 @@ export default function ProposedRoutes({
 
                 {/* Route meta */}
                 <div className="flex items-center gap-3 text-xs mb-3" style={{ color: '#6a6a76' }}>
-                  <span className="flex items-center gap-1.5">
-                    {route.travel_mode === 'DRIVE'
-                      ? <Car size={12} style={{ color: '#4a4a54' }} />
-                      : <Footprints size={12} style={{ color: '#4a4a54' }} />
-                    }
-                    {route.total_duration_mins ?? 0} min
-                  </span>
+                  {onUpdateRoute ? (
+                    <button
+                      type="button"
+                      onClick={(e) => handleToggleTravelMode(route, e)}
+                      disabled={togglingRouteId === route.id}
+                      className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer disabled:opacity-50"
+                      style={route.travel_mode === 'WALK' ? {
+                        background: 'rgba(249,93,15,0.18)',
+                        borderColor: 'rgba(249,93,15,0.35)',
+                        color: '#ff9a5c',
+                      } : {
+                        background: 'var(--color-surface-3)',
+                        borderColor: 'rgba(255,255,255,0.08)',
+                        color: '#a0a0ab',
+                      }}
+                      title={`Click to switch to ${route.travel_mode === 'DRIVE' ? 'walking' : 'driving'}`}
+                    >
+                      {togglingRouteId === route.id ? (
+                        <Loader2 size={12} className="animate-spin" />
+                      ) : route.travel_mode === 'DRIVE' ? (
+                        <Car size={12} />
+                      ) : (
+                        <Footprints size={12} />
+                      )}
+                      <span>{route.travel_mode === 'DRIVE' ? 'Drive' : 'Walk'}</span>
+                      <span className="opacity-70 font-normal">· {route.total_duration_mins ?? 0}m</span>
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      {route.travel_mode === 'DRIVE'
+                        ? <Car size={12} style={{ color: '#4a4a54' }} />
+                        : <Footprints size={12} style={{ color: '#4a4a54' }} />
+                      }
+                      {route.total_duration_mins ?? 0} min
+                    </span>
+                  )}
                   <span className="flex items-center gap-1.5">
                     <Ruler size={11} style={{ color: '#4a4a54' }} />
                     {distKm} km

@@ -700,3 +700,42 @@ _(ideas out of scope, to be added here rather than in code)_
 - Blockers / waiting on user: None.
 - Next: User browser testing of centered modal, My Trips dialog, and trip deletion.
 
+### Entry 38 | Bugfix & Feature | Drive & Walk Route Toggle Fixes
+- Time: Post-Phase 5
+- User request: "in route, drive and walk button isn't working"
+- Done:
+  - **Identified Root Causes:**
+    1. In `src/components/RouteBuilder.tsx`, `handleComputeRoute` and `handleSavePreview` contained an `if (!userId)` guard which caused clicks to silently exit with no action for non-authenticated travelers or guest participants.
+    2. The Route Preview Overlay (`preview && <div className="absolute inset-0 ...">`) completely covered the RouteBuilder container whenever a route was previewed or opened in Edit mode (`editingRoute`). The Drive/Walk toggle buttons in the footer were obscured beneath this overlay, meaning users had no way to toggle travel mode while inspecting or editing a route.
+    3. In `src/lib/routes.ts`, Google Routes API v2 `ComputeRoutes` was receiving place IDs without explicit coordinate fallbacks, and the `oneof` location type threw `INVALID_ARGUMENT` or `NOT_FOUND` on walking route queries.
+    4. In `src/components/ProposedRoutes.tsx`, saved routes only displayed a static non-interactive icon for travel mode with no ability to switch between Drive and Walk directly on the card.
+  - **Google Routes API Engine ([src/lib/routes.ts](file:///d:/Projects/Layover/src/lib/routes.ts)):**
+    - Updated `computeRoutes` waypoint builder to format coordinates via `location: { latLng: { latitude, longitude } }` avoiding `oneof` conflicts and Place ID `NOT_FOUND` errors.
+    - Added graceful fallback: if a walking route request fails (e.g. stops are separated by long highway stretches), it falls back to driving mode with traffic awareness.
+  - **RouteBuilder Engine ([src/components/RouteBuilder.tsx](file:///d:/Projects/Layover/src/components/RouteBuilder.tsx)):**
+    - Removed `!userId` requirement from `handleComputeRoute` and `handleSavePreview`, allowing all room travelers to compute routes, change modes, and save (`created_by: userId || null`).
+    - Added a dedicated, stylish **Travel Mode selector** (`[ Drive | Walk ]`) directly inside the **Route Preview & Edit Overlay** between Route Name/Stats and Stops sequence, with live recomputation, loading spinners, and real-time map polyline synchronization.
+    - Enhanced footer buttons with loading spinner indicators and dynamic preview labels (`Preview Route` / `Preview Walk`).
+  - **Interactive Travel Mode Toggle on Saved Route Cards ([src/components/ProposedRoutes.tsx](file:///d:/Projects/Layover/src/components/ProposedRoutes.tsx) & [src/pages/Room.tsx](file:///d:/Projects/Layover/src/pages/Room.tsx)):**
+    - Turned the travel mode indicator on every saved route card into an interactive toggle button with a spinner.
+    - Clicking it automatically recomputes the route between all stops using the target mode (Drive vs Walk), updates duration and distance, saves to Supabase via `onUpdateRoute`, and immediately redraws the updated polyline on the map.
+- Verified: `npm run build` completed cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+- Blockers / waiting on user: None.
+- Next: User testing in browser.
+
+### Entry 39 | UI Polish | Travel Mode Dropdown Selector
+- Time: Post-Phase 5
+- User request: "the drive and walk toggle at the bottom of the route tab in the sidebar is missaligned. Make it so that instead of clicking on individual seperate buttons, clicking it opens a drop down from which to select."
+- Done:
+  - **Replaced Segmented Toggle with Dropdown Selector ([src/components/RouteBuilder.tsx](file:///d:/Projects/Layover/src/components/RouteBuilder.tsx)):**
+    - Root cause: Horizontal flex row crammed `[ Drive | Walk ]` (150px) + `Optimize` (80px) + `Preview Route` (120px) into a ~348px sidebar width, causing the Drive/Walk buttons to get squished and the "Walk" button to be pushed out of view/misaligned.
+    - Solution: Replaced the 2-button segmented control with a compact, elegant dropdown trigger button displaying the active mode icon, label, and chevron (`[ Car Drive ▾ ]` / `[ Footprints Walk ▾ ]`).
+    - Added an upward-opening popover menu (`bottom-full mb-2 left-0 z-50`) with backdrop blur, deep shadow elevation, active state styling, checkmarks, and informative subtext (`Drive · Live traffic`, `Walk · Footpaths`).
+    - Added click-outside listener to automatically close the popover.
+    - Sized action row elements (`[Mode Dropdown]`, `[Optimize]`, `[Preview Route]`) so the entire row fits comfortably within any sidebar width without wrapping or clipping.
+- Verified: `npm run build` completed cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+- Blockers / waiting on user: None.
+- Next: User verification in browser.
+
+
+

@@ -789,6 +789,7 @@ export default function Room() {
                     setSelectedRouteId(null);
                     setEditingRoute(r);
                   }}
+                  onUpdateRoute={handleUpdateRoute}
                   onDeleteRoute={deleteRoute}
                   bucketItems={bucketItems}
                 />

@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { SortableList } from './SortableList';
 import { getCategoryColor, getCategoryIcon, type PlaceCategory } from '../lib/categories';
 import {
-  Car, Footprints, Wand2, ChevronRight, GripVertical,
+  Car, Footprints, Wand2, ChevronRight, ChevronDown, GripVertical,
   X, Pencil, Check, Loader2, Route, Clock, Ruler, ArrowLeft,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
@@ -50,6 +50,9 @@ export default function RouteBuilder({
   const [routeName, setRouteName] = useState<string>('');
   const [isSavingName, setIsSavingName] = useState(false);
   const [builderCategoryFilter, setBuilderCategoryFilter] = useState<PlaceCategory | 'ALL'>('ALL');
+  const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
+  const modeDropdownRef = useRef<HTMLDivElement>(null);
+
   const [preview, setPreview] = useState<{
     stops: RouteStop[];
     route: any;
@@ -57,6 +60,19 @@ export default function RouteBuilder({
   } | null>(null);
 
   const lastLoadedRouteIdRef = useRef<string | null>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modeDropdownRef.current && !modeDropdownRef.current.contains(event.target as Node)) {
+        setIsModeDropdownOpen(false);
+      }
+    }
+    if (isModeDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isModeDropdownOpen]);
 
   // Load editing route into builder & preview overlay
   useEffect(() => {
@@ -177,9 +193,9 @@ export default function RouteBuilder({
     setErrorStr(null);
     try {
       const response = await computeRoutes({
-        origin: { placeId: newStops[0].place_id },
-        destination: { placeId: newStops[newStops.length - 1].place_id },
-        intermediates: newStops.slice(1, -1).map(s => ({ placeId: s.place_id })),
+        origin: { placeId: newStops[0].place_id, lat: newStops[0].lat, lng: newStops[0].lng },
+        destination: { placeId: newStops[newStops.length - 1].place_id, lat: newStops[newStops.length - 1].lat, lng: newStops[newStops.length - 1].lng },
+        intermediates: newStops.slice(1, -1).map(s => ({ placeId: s.place_id, lat: s.lat, lng: s.lng })),
         travelMode,
         optimizeWaypointOrder: false, // User manually reordered, so do not optimize
       });
@@ -204,21 +220,23 @@ export default function RouteBuilder({
     }
   };
 
-  const handleComputeRoute = async (optimize: boolean) => {
-    if (!userId || stops.length < 2) return;
+  const handleComputeRoute = async (optimize: boolean, modeToUse?: 'DRIVE' | 'WALK', stopsToUse?: RouteStop[]) => {
+    const activeStops = stopsToUse || stops;
+    if (activeStops.length < 2) return;
+    const activeMode = modeToUse || travelMode;
     setIsComputing(true);
     setErrorStr(null);
 
     // Google Maps Routes API only reorders intermediate stops.
     // Optimization requires at least 2 intermediate stops (4+ stops total).
-    const canOptimize = optimize && stops.length > 3;
+    const canOptimize = optimize && activeStops.length > 3;
 
     try {
       const response = await computeRoutes({
-        origin: { placeId: stops[0].place_id },
-        destination: { placeId: stops[stops.length - 1].place_id },
-        intermediates: stops.slice(1, -1).map(s => ({ placeId: s.place_id })),
-        travelMode,
+        origin: { placeId: activeStops[0].place_id, lat: activeStops[0].lat, lng: activeStops[0].lng },
+        destination: { placeId: activeStops[activeStops.length - 1].place_id, lat: activeStops[activeStops.length - 1].lat, lng: activeStops[activeStops.length - 1].lng },
+        intermediates: activeStops.slice(1, -1).map(s => ({ placeId: s.place_id, lat: s.lat, lng: s.lng })),
+        travelMode: activeMode,
         optimizeWaypointOrder: canOptimize,
       });
 
@@ -228,8 +246,8 @@ export default function RouteBuilder({
 
       const route = response.routes[0];
       
-      let finalStops = [...stops];
-      const intermediates = stops.slice(1, -1);
+      let finalStops = [...activeStops];
+      const intermediates = activeStops.slice(1, -1);
       const optIndices = route.optimizedIntermediateWaypointIndex;
 
       // Validate permutation indices returned from Routes API
@@ -240,7 +258,7 @@ export default function RouteBuilder({
         optIndices.every((idx: number) => typeof idx === 'number' && idx >= 0 && idx < intermediates.length)
       ) {
         const reorderedIntermediates = optIndices.map((idx: number) => intermediates[idx]);
-        finalStops = [stops[0], ...reorderedIntermediates, stops[stops.length - 1]];
+        finalStops = [activeStops[0], ...reorderedIntermediates, activeStops[activeStops.length - 1]];
       }
 
       const defaultName = finalStops.length >= 2 
@@ -264,8 +282,16 @@ export default function RouteBuilder({
     }
   };
 
+  const handleTravelModeChange = async (newMode: 'DRIVE' | 'WALK') => {
+    setTravelMode(newMode);
+    const activeStops = preview?.stops || stops;
+    if (activeStops.length >= 2) {
+      await handleComputeRoute(false, newMode, activeStops);
+    }
+  };
+
   const handleSavePreview = async () => {
-    if (!userId || !preview) return;
+    if (!preview) return;
     try {
       const defaultName = preview.stops.length >= 2 
         ? `${preview.stops[0].name} to ${preview.stops[preview.stops.length - 1].name}` 
@@ -290,7 +316,7 @@ export default function RouteBuilder({
       } else {
         const { data, error } = await supabase.from('proposed_routes').insert({
           room_id: roomId,
-          created_by: userId,
+          created_by: userId || null,
           ...routeData,
         }).select().single();
         if (error) throw error;
@@ -544,48 +570,145 @@ export default function RouteBuilder({
         </div>
       )}
 
-      {/* Travel mode + action buttons */}
-      <div className="flex items-center justify-between gap-2">
-        {/* Travel mode toggle */}
-        <div className="flex items-center rounded-xl overflow-hidden"
-             style={{ border: '1.5px solid rgba(255,255,255,0.07)' }}>
+      {/* Travel mode dropdown + action buttons */}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        {/* Travel mode dropdown selector */}
+        <div className="relative shrink-0" ref={modeDropdownRef}>
           <button
             type="button"
-            onClick={() => setTravelMode('DRIVE')}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all"
-            style={travelMode === 'DRIVE' ? {
-              background: 'rgba(249,93,15,0.2)',
-              color: '#ff9a5c',
-            } : {
-              background: 'transparent',
-              color: '#4a4a54',
+            onClick={() => setIsModeDropdownOpen(prev => !prev)}
+            disabled={isComputing}
+            className="flex items-center gap-1.5 px-2.5 py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer disabled:opacity-50"
+            style={{
+              background: 'var(--color-surface-2)',
+              borderColor: isModeDropdownOpen ? 'rgba(249,93,15,0.4)' : 'rgba(255,255,255,0.08)',
+              color: travelMode === 'DRIVE' ? '#ff9a5c' : '#34d399',
+              boxShadow: isModeDropdownOpen ? '0 0 10px rgba(249,93,15,0.15)' : 'none',
             }}
+            title="Choose travel mode"
           >
-            <Car size={13} />
-            Drive
+            {isComputing ? (
+              <Loader2 size={13} className="animate-spin text-[#f95d0f]" />
+            ) : travelMode === 'DRIVE' ? (
+              <Car size={13} style={{ color: '#ff9a5c' }} />
+            ) : (
+              <Footprints size={13} style={{ color: '#34d399' }} />
+            )}
+            <span className="font-medium" style={{ color: '#e8e8ec' }}>
+              {travelMode === 'DRIVE' ? 'Drive' : 'Walk'}
+            </span>
+            <ChevronDown
+              size={12}
+              className="transition-transform duration-200"
+              style={{
+                color: '#6a6a76',
+                transform: isModeDropdownOpen ? 'rotate(180deg)' : 'none',
+              }}
+            />
           </button>
-          <button
-            type="button"
-            onClick={() => setTravelMode('WALK')}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all"
-            style={travelMode === 'WALK' ? {
-              background: 'rgba(249,93,15,0.2)',
-              color: '#ff9a5c',
-            } : {
-              background: 'transparent',
-              color: '#4a4a54',
-            }}
-          >
-            <Footprints size={13} />
-            Walk
-          </button>
+
+          {/* Dropdown menu popover */}
+          {isModeDropdownOpen && (
+            <div
+              className="absolute bottom-full mb-2 left-0 z-50 w-48 rounded-2xl border p-1.5 flex flex-col gap-1 shadow-2xl backdrop-blur-xl"
+              style={{
+                background: '#151518',
+                borderColor: 'rgba(255,255,255,0.1)',
+                boxShadow: '0 16px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05)',
+              }}
+            >
+              <div className="px-2.5 py-1 border-b mb-0.5" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+                <span className="section-label text-[10px]">Travel Mode</span>
+              </div>
+
+              {/* Drive option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsModeDropdownOpen(false);
+                  handleTravelModeChange('DRIVE');
+                }}
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer group"
+                style={{
+                  background: travelMode === 'DRIVE' ? 'rgba(249,93,15,0.15)' : 'transparent',
+                }}
+                onMouseEnter={e => {
+                  if (travelMode !== 'DRIVE') e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                }}
+                onMouseLeave={e => {
+                  if (travelMode !== 'DRIVE') e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <div
+                  className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: travelMode === 'DRIVE' ? 'rgba(249,93,15,0.25)' : 'rgba(255,255,255,0.06)',
+                    color: travelMode === 'DRIVE' ? '#ff9a5c' : '#8a8a96',
+                  }}
+                >
+                  <Car size={13} />
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-xs font-semibold leading-tight" style={{ color: travelMode === 'DRIVE' ? '#ff9a5c' : '#e8e8ec' }}>
+                    Drive
+                  </span>
+                  <span className="text-[10px] truncate" style={{ color: '#6a6a76' }}>
+                    Live traffic
+                  </span>
+                </div>
+                {travelMode === 'DRIVE' && (
+                  <Check size={13} style={{ color: '#ff9a5c' }} className="shrink-0" />
+                )}
+              </button>
+
+              {/* Walk option */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsModeDropdownOpen(false);
+                  handleTravelModeChange('WALK');
+                }}
+                className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all cursor-pointer group"
+                style={{
+                  background: travelMode === 'WALK' ? 'rgba(52,211,153,0.15)' : 'transparent',
+                }}
+                onMouseEnter={e => {
+                  if (travelMode !== 'WALK') e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                }}
+                onMouseLeave={e => {
+                  if (travelMode !== 'WALK') e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <div
+                  className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                  style={{
+                    background: travelMode === 'WALK' ? 'rgba(52,211,153,0.25)' : 'rgba(255,255,255,0.06)',
+                    color: travelMode === 'WALK' ? '#34d399' : '#8a8a96',
+                  }}
+                >
+                  <Footprints size={13} />
+                </div>
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-xs font-semibold leading-tight" style={{ color: travelMode === 'WALK' ? '#34d399' : '#e8e8ec' }}>
+                    Walk
+                  </span>
+                  <span className="text-[10px] truncate" style={{ color: '#6a6a76' }}>
+                    Footpaths
+                  </span>
+                </div>
+                {travelMode === 'WALK' && (
+                  <Check size={13} style={{ color: '#34d399' }} className="shrink-0" />
+                )}
+              </button>
+            </div>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => handleComputeRoute(true)}
             disabled={stops.length < 4 || isComputing}
-            className="btn btn-ghost !py-2 !px-3 text-xs gap-1.5"
+            className="btn btn-ghost !py-2 !px-2.5 text-xs gap-1.5"
             title="Reorders stops to minimize travel time (needs 4+ stops)"
           >
             <Wand2 size={12} />
@@ -669,6 +792,62 @@ export default function RouteBuilder({
                 <div className="text-sm font-bold" style={{ color: editingRouteId ? '#6ee7b7' : '#ff9a5c' }}>
                   {(preview.route.distanceMeters / 1000).toFixed(1)} km
                 </div>
+              </div>
+            </div>
+
+            {/* Travel Mode Selector in Preview / Edit */}
+            <div className="flex items-center justify-between p-2.5 rounded-xl"
+                 style={{ background: 'var(--color-surface-3)', border: '1.5px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex flex-col">
+                <span className="section-label">Travel Mode</span>
+                <span className="text-[10px] font-medium" style={{ color: '#6a6a76' }}>
+                  {isComputing ? 'Recalculating route…' : travelMode === 'DRIVE' ? 'Driving with traffic' : 'Walking route path'}
+                </span>
+              </div>
+              <div className="flex items-center rounded-xl overflow-hidden p-0.5"
+                   style={{ background: 'var(--color-surface-2)', border: '1.5px solid rgba(255,255,255,0.08)' }}>
+                <button
+                  type="button"
+                  onClick={() => handleTravelModeChange('DRIVE')}
+                  disabled={isComputing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                  style={travelMode === 'DRIVE' ? {
+                    background: 'rgba(249,93,15,0.25)',
+                    color: '#ff9a5c',
+                    boxShadow: '0 2px 8px rgba(249,93,15,0.2)',
+                  } : {
+                    background: 'transparent',
+                    color: '#6a6a76',
+                  }}
+                >
+                  {isComputing && travelMode === 'DRIVE' ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Car size={12} />
+                  )}
+                  Drive
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTravelModeChange('WALK')}
+                  disabled={isComputing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer disabled:opacity-50"
+                  style={travelMode === 'WALK' ? {
+                    background: 'rgba(249,93,15,0.25)',
+                    color: '#ff9a5c',
+                    boxShadow: '0 2px 8px rgba(249,93,15,0.2)',
+                  } : {
+                    background: 'transparent',
+                    color: '#6a6a76',
+                  }}
+                >
+                  {isComputing && travelMode === 'WALK' ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Footprints size={12} />
+                  )}
+                  Walk
+                </button>
               </div>
             </div>
 
