@@ -19,10 +19,11 @@ import RouteBuilder from '../components/RouteBuilder';
 import ProposedRoutes from '../components/ProposedRoutes';
 import RoutePolyline from '../components/RoutePolyline';
 import InstagramImport from '../components/InstagramImport';
+import AIScout from '../components/AIScout';
 import { getCategoryColor, getCategoryIcon, type PlaceCategory } from '../lib/categories';
 import CategoryIcon from '../components/CategoryIcon';
 import {
-  Compass, X, Gem, BookMarked, Route,
+  Compass, X, Gem, BookMarked, Route, Sparkles,
   Loader2, AlertTriangle, ArrowLeft,
 } from 'lucide-react';
 
@@ -45,7 +46,7 @@ export default function Room() {
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [editingRoute, setEditingRoute] = useState<any | null>(null);
   const [builderPreview, setBuilderPreview] = useState<{ stops: any[]; route: any; routeName: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<'bucket' | 'routes'>('bucket');
+  const [activeTab, setActiveTab] = useState<'bucket' | 'routes' | 'ai'>('bucket');
 
   // Resizable sidebar state
   const DEFAULT_SIDEBAR_WIDTH = 384;
@@ -551,12 +552,19 @@ export default function Room() {
                 <span>Routes</span>
                 <span className="tab-count">{routes.length}</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('ai')}
+                className={`tab-btn ${activeTab === 'ai' ? 'active' : ''}`}
+              >
+                <Sparkles size={13} />
+                <span>AI Scout</span>
+              </button>
             </div>
 
             {/* TAB 1: BUCKET LIST */}
-            {activeTab === 'bucket' && (
-              <>
-                {/* Search + destination + filters */}
+            <div className={`flex flex-col flex-1 overflow-y-auto ${activeTab === 'bucket' ? '' : 'hidden'}`}>
+              {/* Search + destination + filters */}
                 <div id="search-bar-slot" className="p-4 border-b relative z-10 flex flex-col gap-3"
                      style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   <DestinationBar
@@ -664,46 +672,54 @@ export default function Room() {
                 </div>
 
                 <InstagramImport />
-              </>
-            )}
+            </div>
 
             {/* TAB 2: ROUTES */}
-            {activeTab === 'routes' && (
-              <div className="flex flex-col flex-1 overflow-y-auto">
-                <div id="proposed-routes-slot" className="flex-1 overflow-y-auto">
-                  <ProposedRoutes
-                    routes={routes}
-                    votesHook={votesHook}
-                    onSelectRoute={(r) => setSelectedRouteId(r ? r.id : null)}
-                    selectedRouteId={selectedRouteId}
-                    onEditRoute={(r) => {
-                      setSelectedRouteId(null);
-                      setEditingRoute(r);
-                    }}
-                    onDeleteRoute={deleteRoute}
-                    bucketItems={bucketItems}
-                  />
-                </div>
-
-                {/* RouteBuilder slot */}
-                <div id="route-builder-slot" className="border-t p-4 shrink-0"
-                     style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'var(--color-surface-1)' }}>
-                  <RouteBuilder
-                    roomId={room?.id ?? ''}
-                    userId={user?.id}
-                    availablePlaces={bucketItems}
-                    editingRoute={editingRoute}
-                    onClearEditing={() => {
-                      if (editingRoute) setSelectedRouteId(editingRoute.id);
-                      setEditingRoute(null);
-                    }}
-                    onPreviewChange={setBuilderPreview}
-                    onUpdateRoute={handleUpdateRoute}
-                    onRouteCreated={(newId) => setSelectedRouteId(newId)}
-                  />
-                </div>
+            <div className={`flex flex-col flex-1 overflow-y-auto ${activeTab === 'routes' ? '' : 'hidden'}`}>
+              <div id="proposed-routes-slot" className="flex-1 overflow-y-auto">
+                <ProposedRoutes
+                  routes={routes}
+                  votesHook={votesHook}
+                  onSelectRoute={(r) => setSelectedRouteId(r ? r.id : null)}
+                  selectedRouteId={selectedRouteId}
+                  onEditRoute={(r) => {
+                    setSelectedRouteId(null);
+                    setEditingRoute(r);
+                  }}
+                  onDeleteRoute={deleteRoute}
+                  bucketItems={bucketItems}
+                />
               </div>
-            )}
+
+              {/* RouteBuilder slot */}
+              <div id="route-builder-slot" className="border-t p-4 shrink-0"
+                   style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'var(--color-surface-1)' }}>
+                <RouteBuilder
+                  roomId={room?.id ?? ''}
+                  userId={user?.id}
+                  availablePlaces={bucketItems}
+                  editingRoute={editingRoute}
+                  onClearEditing={() => {
+                    if (editingRoute) setSelectedRouteId(editingRoute.id);
+                    setEditingRoute(null);
+                  }}
+                  onPreviewChange={setBuilderPreview}
+                  onUpdateRoute={handleUpdateRoute}
+                  onRouteCreated={(newId) => setSelectedRouteId(newId)}
+                />
+              </div>
+            </div>
+
+            {/* TAB 3: AI SCOUT */}
+            <div className={`flex flex-col flex-1 overflow-y-auto ${activeTab === 'ai' ? '' : 'hidden'}`}>
+              <AIScout
+                roomId={id}
+                destination={activeSearchDestination}
+                bucketItems={bucketItems}
+                onAddPlace={handleAddPlace}
+                addingPlace={addingPlace}
+              />
+            </div>
           </aside>
         </div>
       </div>
