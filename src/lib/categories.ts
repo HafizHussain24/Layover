@@ -290,16 +290,17 @@ export const CATEGORY_COLORS: Record<PlaceCategory, string> = {
   Transport: '#6b7280',  // gray-500
 };
 
+// Lucide icon names — used by getCategoryIcon() and rendered via <LucideIcon name={...} />
 export const CATEGORY_ICONS: Record<PlaceCategory, string> = {
-  Food: '🍽️',
-  Dessert: '🍨',
-  Cafe: '☕',
-  Attraction: '🏛️',
-  Nature: '🌲',
-  Shopping: '🛍️',
-  Nightlife: '🍸',
-  Accommodation: '🏨',
-  Transport: '🚆',
+  Food:          'UtensilsCrossed',
+  Dessert:       'IceCreamCone',
+  Cafe:          'Coffee',
+  Attraction:    'Landmark',
+  Nature:        'TreePine',
+  Shopping:      'ShoppingBag',
+  Nightlife:     'Wine',
+  Accommodation: 'BedDouble',
+  Transport:     'Train',
 };
 
 export const ALL_CATEGORIES: PlaceCategory[] = [
@@ -315,8 +316,8 @@ export const ALL_CATEGORIES: PlaceCategory[] = [
 ];
 
 export function getCategoryIcon(category?: string | null): string {
-  if (!category) return '📍';
-  return CATEGORY_ICONS[category as PlaceCategory] ?? '📍';
+  if (!category) return 'MapPin';
+  return CATEGORY_ICONS[category as PlaceCategory] ?? 'MapPin';
 }
 
 export function getCategoryColor(category?: string | null): string {

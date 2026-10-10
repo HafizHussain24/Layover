@@ -2,6 +2,9 @@
 import { useState, useRef } from 'react';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
 import { resolveCategory, CATEGORY_COLORS, type PlaceCategory } from '../lib/categories';
+import { Search, X, Plus, Loader2, Star } from 'lucide-react';
+import CategoryIcon from './CategoryIcon';
+import { getCategoryIcon } from '../lib/categories';
 
 export interface PlacePreview {
   place_id: string;
@@ -30,25 +33,15 @@ export default function SearchBar({ onAddPlace, adding, destination }: SearchBar
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setInputValue(val);
-    
-    if (!placesLib || !val.trim()) {
-      setSuggestions([]);
-      return;
-    }
-
+    if (!placesLib || !val.trim()) { setSuggestions([]); return; }
     try {
-      const request: any = {
-        input: val,
-      };
-
-      // Apply locationBias to destination city if specified
-      if (destination && destination.lat && destination.lng) {
+      const request: any = { input: val };
+      if (destination?.lat && destination?.lng) {
         request.locationBias = {
           center: { lat: destination.lat, lng: destination.lng },
-          radius: 50000, // 50km radius boost
+          radius: 50000,
         };
       }
-
       const response = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
       setSuggestions(response.suggestions || []);
     } catch (err) {
@@ -59,14 +52,11 @@ export default function SearchBar({ onAddPlace, adding, destination }: SearchBar
 
   const handleSuggestionClick = async (suggestion: google.maps.places.AutocompleteSuggestion) => {
     if (!placesLib || !suggestion.placePrediction) return;
-    
     try {
-      // Use the new Place class
       const place = new placesLib.Place({ id: suggestion.placePrediction.placeId });
-      await place.fetchFields({ 
-        fields: ['id', 'displayName', 'formattedAddress', 'location', 'primaryType', 'types', 'rating', 'userRatingCount'] 
+      await place.fetchFields({
+        fields: ['id', 'displayName', 'formattedAddress', 'location', 'primaryType', 'types', 'rating', 'userRatingCount'],
       });
-      
       setSelected({
         place_id: place.id,
         name: place.displayName ?? 'Unknown Place',
@@ -75,7 +65,7 @@ export default function SearchBar({ onAddPlace, adding, destination }: SearchBar
         lng: place.location?.lng() ?? 0,
         category: resolveCategory(place.primaryType, place.types, place.displayName),
         rating: place.rating ?? undefined,
-        review_count: place.userRatingCount ?? undefined
+        review_count: place.userRatingCount ?? undefined,
       });
       setSuggestions([]);
       setInputValue(place.displayName ?? '');
@@ -97,66 +87,102 @@ export default function SearchBar({ onAddPlace, adding, destination }: SearchBar
     }
   };
 
+  const placeholderText = destination?.name
+    ? `Search in ${destination.name.split(',')[0]}…`
+    : 'Search for places…';
+
   return (
     <div className="relative w-full">
-      <div className="relative flex items-center bg-surface-1/90 backdrop-blur-md rounded-xl border border-slate-700/50 shadow-lg overflow-hidden focus-within:border-indigo-500/50 transition-colors">
-        <span className="pl-4 text-slate-400">🔍</span>
+      {/* Input row */}
+      <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl transition-all"
+           style={{
+             background: 'var(--color-surface-3)',
+             border: '1.5px solid rgba(255,255,255,0.08)',
+           }}
+           onFocus={() => {}}
+      >
+        <Search size={15} style={{ color: '#4a4a54', flexShrink: 0 }} />
         <input
           ref={inputRef}
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          placeholder={
-            destination?.name
-              ? `Search places in ${destination.name.split(',')[0]}...`
-              : "Search for places..."
-          }
-          className="w-full px-3 py-3 text-sm bg-transparent text-white outline-none"
+          placeholder={placeholderText}
+          className="flex-1 bg-transparent text-sm outline-none py-0.5"
+          style={{ color: '#e8e8ec', border: 'none', boxShadow: 'none' }}
           disabled={adding}
         />
         {(selected || inputValue) && (
-          <button onClick={handleClear} className="pr-4 text-slate-400 hover:text-white" disabled={adding}>
-            ✕
+          <button onClick={handleClear} disabled={adding}
+                  className="p-0.5 rounded transition-colors"
+                  style={{ color: '#4a4a54' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#e8e8ec')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#4a4a54')}>
+            <X size={14} />
           </button>
         )}
       </div>
 
-      {/* Autocomplete Dropdown */}
+      {/* Autocomplete dropdown */}
       {suggestions.length > 0 && !selected && (
-        <div className="absolute top-full mt-2 left-0 right-0 bg-surface-1 rounded-xl shadow-xl border border-slate-700/50 z-50 overflow-hidden max-h-60 overflow-y-auto">
+        <div className="absolute top-full mt-2 left-0 right-0 autocomplete-dropdown z-50 max-h-64 overflow-y-auto">
           {suggestions.map((s, i) => (
-            <button
-              key={i}
-              onClick={() => handleSuggestionClick(s)}
-              className="w-full text-left px-4 py-3 text-sm hover:bg-slate-800/60 border-b border-slate-800/30 last:border-0 transition-colors"
-            >
-              <div className="text-white font-medium">{s.placePrediction?.text?.text}</div>
+            <button key={i} onClick={() => handleSuggestionClick(s)}
+                    className="autocomplete-item w-full text-left">
+              <Search size={12} style={{ color: '#4a4a54', flexShrink: 0 }} />
+              <div className="min-w-0">
+                <div className="text-xs font-medium truncate" style={{ color: '#e8e8ec' }}>
+                  {s.placePrediction?.mainText?.text || s.placePrediction?.text?.text}
+                </div>
+                {s.placePrediction?.secondaryText?.text && (
+                  <div className="text-[11px] truncate" style={{ color: '#4a4a54' }}>
+                    {s.placePrediction.secondaryText.text}
+                  </div>
+                )}
+              </div>
             </button>
           ))}
         </div>
       )}
 
+      {/* Selected place preview card */}
       {selected && (
-        <div className="absolute top-full mt-2 left-0 right-0 bg-surface-1 rounded-xl p-4 shadow-xl border border-slate-700/50 z-50 animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div>
-              <h3 className="font-bold text-white text-sm leading-tight mb-1">{selected.name}</h3>
-              <p className="text-slate-400 text-xs line-clamp-1">{selected.address}</p>
+        <div className="absolute top-full mt-2 left-0 right-0 z-50 rounded-xl p-4 shadow-2xl animate-in"
+             style={{ background: 'var(--color-surface-2)', border: '1.5px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div className="min-w-0">
+              <h3 className="font-semibold text-sm leading-tight mb-0.5" style={{ color: '#e8e8ec' }}>
+                {selected.name}
+              </h3>
+              <p className="text-xs line-clamp-1" style={{ color: '#4a4a54' }}>{selected.address}</p>
             </div>
-            <span 
-              className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide flex-shrink-0"
-              style={{ background: `${CATEGORY_COLORS[selected.category]}20`, color: CATEGORY_COLORS[selected.category] }}
-            >
+            {/* Category badge */}
+            <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold flex-shrink-0"
+                  style={{
+                    background: `${CATEGORY_COLORS[selected.category]}18`,
+                    color: CATEGORY_COLORS[selected.category],
+                    border: `1px solid ${CATEGORY_COLORS[selected.category]}35`,
+                  }}>
+              <CategoryIcon name={getCategoryIcon(selected.category)} size={10} />
               {selected.category}
             </span>
           </div>
-          
-          <button 
-            onClick={handleAdd}
-            disabled={adding}
-            className="w-full btn btn-primary text-xs py-2"
-          >
-            {adding ? <><span className="spinner w-3 h-3 border-2" /> Adding...</> : '✨ Add to Bucket'}
+
+          {selected.rating && (
+            <div className="flex items-center gap-1.5 mb-3">
+              <span className="flex items-center gap-1 text-xs font-bold" style={{ color: '#fbbf24' }}>
+                <Star size={11} fill="#fbbf24" style={{ color: '#fbbf24' }} />
+                {selected.rating}
+              </span>
+              <span className="text-[11px]" style={{ color: '#4a4a54' }}>({selected.review_count?.toLocaleString()} reviews)</span>
+            </div>
+          )}
+
+          <button onClick={handleAdd} disabled={adding} className="btn btn-primary w-full text-xs py-2.5">
+            {adding
+              ? <><Loader2 size={13} className="animate-spin" /> Adding…</>
+              : <><Plus size={13} /> Add to Bucket</>
+            }
           </button>
         </div>
       )}

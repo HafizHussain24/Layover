@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useAuth, upsertProfile } from '../lib/auth';
+import { Loader2, ArrowRight } from 'lucide-react';
 
 const AVATAR_COLORS = [
-  '#6366f1', '#ec4899', '#f97316', '#22c55e',
-  '#14b8a6', '#a78bfa', '#eab308', '#3b82f6',
+  '#f95d0f', '#ec4899', '#8b5cf6', '#3b82f6',
+  '#10b981', '#f59e0b', '#14b8a6', '#6366f1',
 ];
 
 interface DisplayNamePromptProps {
@@ -35,62 +36,75 @@ export default function DisplayNamePrompt({ onComplete }: DisplayNamePromptProps
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
-         style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)' }}>
+         style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)' }}>
       <div className="glass p-8 w-full max-w-sm animate-in">
-        <div className="text-center mb-6">
-          <div className="text-4xl mb-3">👋</div>
-          <h2 className="text-xl font-bold text-white">What's your name?</h2>
-          <p className="text-slate-400 text-sm mt-1">Your friends will see this in the room.</p>
+
+        {/* Avatar preview */}
+        <div className="flex justify-center mb-6">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold text-white shadow-xl transition-all"
+               style={{ backgroundColor: color, boxShadow: `0 8px 24px ${color}55` }}>
+            {name ? name[0].toUpperCase() : '?'}
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="text-center mb-6">
+          <h2 className="font-display font-bold text-xl mb-1.5" style={{ color: '#e8e8ec' }}>
+            What's your name?
+          </h2>
+          <p className="text-sm" style={{ color: '#6a6a76' }}>
+            Your friends will see this in the room.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <input
             id="display-name-input"
             type="text"
-            placeholder="Your name (e.g. Riya)"
+            placeholder="Your name — e.g. Riya"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full px-4 py-3 text-sm"
-            style={{ borderRadius: '0.625rem' }}
             maxLength={30}
             autoFocus
           />
 
           {/* Color picker */}
           <div>
-            <p className="text-xs text-slate-500 mb-2">Pick a color</p>
-            <div className="flex gap-2 flex-wrap">
+            <p className="section-label mb-3">Choose a color</p>
+            <div className="flex gap-2.5 flex-wrap">
               {AVATAR_COLORS.map((c) => (
                 <button
                   key={c}
                   type="button"
                   id={`color-${c.replace('#', '')}`}
                   onClick={() => setColor(c)}
-                  className="w-8 h-8 rounded-full transition-transform border-2"
+                  className="w-9 h-9 rounded-xl transition-all relative"
                   style={{
                     backgroundColor: c,
-                    borderColor: color === c ? 'white' : 'transparent',
-                    transform: color === c ? 'scale(1.2)' : 'scale(1)',
+                    transform: color === c ? 'scale(1.15)' : 'scale(1)',
+                    boxShadow: color === c ? `0 0 0 2px #141416, 0 0 0 4px ${c}` : 'none',
                   }}
                 />
               ))}
             </div>
           </div>
 
-          {/* Avatar preview */}
-          <div className="flex items-center gap-3 p-3 rounded-xl"
-               style={{ background: 'rgba(99,102,241,0.08)' }}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
+          {/* Preview */}
+          <div className="flex items-center gap-3 px-4 py-3 rounded-xl"
+               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-base flex-shrink-0 transition-all"
                  style={{ backgroundColor: color }}>
               {name ? name[0].toUpperCase() : '?'}
             </div>
             <div>
-              <p className="text-white font-semibold text-sm">{name || 'Your Name'}</p>
-              <p className="text-slate-500 text-xs">WanderRoom member</p>
+              <p className="font-semibold text-sm" style={{ color: '#e8e8ec' }}>
+                {name || 'Your Name'}
+              </p>
+              <p className="text-xs" style={{ color: '#4a4a54' }}>WanderRoom traveller</p>
             </div>
           </div>
 
-          {error && <p className="text-xs text-red-400">{error}</p>}
+          {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
 
           <button
             id="save-name-btn"
@@ -98,7 +112,10 @@ export default function DisplayNamePrompt({ onComplete }: DisplayNamePromptProps
             className="btn btn-primary w-full"
             disabled={saving || !name.trim()}
           >
-            {saving ? <><span className="spinner" /> Saving...</> : 'Let\'s go →'}
+            {saving
+              ? <><Loader2 size={15} className="animate-spin" /> Saving…</>
+              : <><span>Let's go</span><ArrowRight size={15} /></>
+            }
           </button>
         </form>
       </div>

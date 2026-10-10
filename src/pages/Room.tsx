@@ -20,6 +20,11 @@ import ProposedRoutes from '../components/ProposedRoutes';
 import RoutePolyline from '../components/RoutePolyline';
 import InstagramImport from '../components/InstagramImport';
 import { getCategoryColor, getCategoryIcon, type PlaceCategory } from '../lib/categories';
+import CategoryIcon from '../components/CategoryIcon';
+import {
+  Compass, X, Gem, BookMarked, Route,
+  Loader2, AlertTriangle, ArrowLeft,
+} from 'lucide-react';
 
 // Phase 1: layout shell. Map, BucketList, etc. wired in Phase 2+.
 
@@ -281,8 +286,12 @@ export default function Room() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="spinner mx-auto mb-4" style={{ width: 32, height: 32 }} />
-          <p className="text-slate-400 text-sm">Loading room...</p>
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-5"
+               style={{ background: 'linear-gradient(135deg, #ff7a38, #f95d0f)', boxShadow: '0 8px 24px rgba(249,93,15,0.35)' }}>
+            <Compass size={22} color="white" />
+          </div>
+          <Loader2 size={22} className="animate-spin mx-auto mb-3" style={{ color: '#f95d0f' }} />
+          <p className="text-sm" style={{ color: '#4a4a54' }}>Loading room…</p>
         </div>
       </div>
     );
@@ -292,16 +301,21 @@ export default function Room() {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="glass p-8 max-w-sm w-full text-center">
-          <div className="text-4xl mb-4">🗺️</div>
-          <h2 className="text-xl font-bold text-white mb-2">Room not found</h2>
-          <p className="text-slate-400 text-sm mb-6">{roomError ?? 'This room doesn\'t exist.'}</p>
-          <Link to="/" className="btn btn-primary">← Back to Home</Link>
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
+               style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.2)' }}>
+            <AlertTriangle size={20} style={{ color: '#f87171' }} />
+          </div>
+          <h2 className="font-display font-bold text-xl mb-2" style={{ color: '#e8e8ec' }}>Room not found</h2>
+          <p className="text-sm mb-6" style={{ color: '#4a4a54' }}>{roomError ?? "This room doesn't exist."}</p>
+          <Link to="/" className="btn btn-secondary flex items-center justify-center gap-2">
+            <ArrowLeft size={14} /> Back to Home
+          </Link>
         </div>
       </div>
     );
   }
 
-  const roomName = isDemo ? 'Kochi Weekend 🌴 [DEMO]' : room?.name ?? '';
+  const roomName = isDemo ? 'Kochi Weekend [DEMO]' : room?.name ?? '';
 
   return (
     <APIProvider apiKey={mapsApiKey}>
@@ -311,22 +325,33 @@ export default function Room() {
 
       {/* App shell */}
       <div className="flex flex-col h-screen overflow-hidden">
-        {/* Top bar */}
-        <header className="flex-shrink-0 flex items-center justify-between px-4 py-3 z-20"
-                style={{ background: 'rgba(15,15,26,0.95)', borderBottom: '1px solid rgba(99,102,241,0.15)' }}>
+        {/* ── Top bar ── */}
+        <header
+          className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 z-40 relative"
+          style={{
+            background: 'rgba(20,20,22,0.97)',
+            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
           <div className="flex items-center gap-3">
-            <Link to="/" className="text-slate-400 hover:text-white transition-colors text-lg" title="Home">
-              ✈️
+            <Link
+              to="/"
+              className="flex items-center justify-center w-8 h-8 rounded-xl transition-all"
+              style={{ background: 'linear-gradient(135deg, #ff7a38, #f95d0f)' }}
+              title="Home"
+            >
+              <Compass size={16} color="white" />
             </Link>
             <div>
-              <h1 className="text-white font-bold text-base leading-tight truncate max-w-[180px] sm:max-w-none">
-                {roomName}
+              <h1 className="font-display font-bold text-sm leading-tight" style={{ color: '#e8e8ec' }}>
+                {roomName.replace(' [DEMO]', '')}
               </h1>
-              {isDemo && <span className="demo-badge">demo data</span>}
+              {isDemo && <span className="demo-badge">demo</span>}
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div id="presence-bar-slot" className="hidden sm:flex items-center gap-1">
+          <div className="flex items-center gap-3">
+            <div id="presence-bar-slot" className="hidden sm:flex items-center">
               <PresenceBar users={presentUsers} />
             </div>
             <div id="share-btn-slot">
@@ -337,64 +362,74 @@ export default function Room() {
 
         {/* Main content */}
         <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
-          {/* Map area — takes top half on mobile, left side on desktop */}
-          <div id="map-slot" className="flex-1 relative bg-slate-900 min-h-[40vh] md:min-h-0">
-            {/* Floating Banner when viewing an isolated route */}
+          {/* Map area */}
+          <div id="map-slot" className="flex-1 relative min-h-[40vh] md:min-h-0"
+               style={{ background: 'var(--color-surface-0)' }}>
+            {/* Floating banner: viewing isolated route */}
             {selectedRoute && !builderPreview && !editingRoute && (
-              <div className="absolute top-4 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-indigo-500/40 rounded-xl px-3.5 py-2 shadow-2xl flex items-center gap-3">
+              <div className="absolute top-4 left-4 z-10 map-banner flex items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-                  <span className="text-xs font-semibold text-white">
-                    Viewing: <span className="text-indigo-300 font-bold">{selectedRoute.route_name}</span>
+                  <span className="w-2 h-2 rounded-full" style={{ background: '#f95d0f', boxShadow: '0 0 8px #f95d0f' }} />
+                  <span className="text-xs font-semibold" style={{ color: '#e8e8ec' }}>
+                    Viewing{' '}
+                    <span className="font-bold" style={{ color: '#ff9a5c' }}>{selectedRoute.route_name}</span>
                   </span>
-                  <span className="text-[11px] text-slate-400">({mapItems.length} stops isolated)</span>
+                  <span className="text-xs" style={{ color: '#4a4a54' }}>({mapItems.length} stops)</span>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedRouteId(null)}
-                  className="text-xs text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700 transition-colors"
-                  title="Show all places on map"
+                  className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.05)', color: '#6a6a76', border: '1px solid rgba(255,255,255,0.08)' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#e8e8ec')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#6a6a76')}
                 >
-                  ✕ Show all
+                  <X size={11} /> Show all
                 </button>
               </div>
             )}
 
-            {/* Floating Banner when editing with live changes comparison */}
+            {/* Floating banner: editing with live comparison */}
             {isEditing && (
-              <div className="absolute top-4 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-emerald-500/40 rounded-xl px-3.5 py-2 shadow-2xl flex flex-wrap items-center gap-3">
+              <div className="absolute top-4 left-4 z-10 map-banner flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-xs font-semibold text-white">
-                    Editing: <span className="text-emerald-300 font-bold">{editingRoute.route_name}</span>
+                  <span className="w-2 h-2 rounded-full" style={{ background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+                  <span className="text-xs font-semibold" style={{ color: '#e8e8ec' }}>
+                    Editing{' '}
+                    <span style={{ color: '#6ee7b7' }}>{editingRoute.route_name}</span>
                   </span>
                 </div>
                 {isRouteModified && (
-                  <div className="flex items-center gap-2.5 text-xs border-l border-slate-700 pl-3">
-                    <span className="flex items-center gap-1.5 text-blue-400 font-semibold">
-                      <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span> Original
+                  <div className="flex items-center gap-2.5 text-xs border-l pl-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                    <span className="flex items-center gap-1.5 font-semibold" style={{ color: '#60a5fa' }}>
+                      <span className="w-2 h-2 rounded-full" style={{ background: '#3b82f6' }} /> Original
                     </span>
-                    <span className="text-slate-600">•</span>
-                    <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm"></span> Live New
+                    <span style={{ color: '#3a3a42' }}>•</span>
+                    <span className="flex items-center gap-1.5 font-semibold" style={{ color: '#34d399' }}>
+                      <span className="w-2 h-2 rounded-full" style={{ background: '#10b981' }} /> Live
                     </span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Floating Banner when category filter is active and not viewing a route */}
+            {/* Floating banner: category filter */}
             {selectedCategory !== 'ALL' && !selectedRoute && !builderPreview && !editingRoute && (
-              <div className="absolute top-4 left-4 z-10 bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl px-3.5 py-2 shadow-2xl flex items-center gap-2.5 text-xs">
-                <span className="text-sm">{getCategoryIcon(selectedCategory)}</span>
-                <span className="text-white font-medium">
-                  Showing <strong style={{ color: getCategoryColor(selectedCategory) }}>{selectedCategory}</strong> places
+              <div className="absolute top-4 left-4 z-10 map-banner flex items-center gap-2.5 text-xs">
+                <CategoryIcon name={getCategoryIcon(selectedCategory)} size={13} style={{ color: getCategoryColor(selectedCategory) }} />
+                <span style={{ color: '#e8e8ec' }}>
+                  Showing{' '}
+                  <strong style={{ color: getCategoryColor(selectedCategory) }}>{selectedCategory}</strong>
+                  {' '}places
                 </span>
-                <span className="text-slate-400">({filteredBucket.length})</span>
+                <span style={{ color: '#4a4a54' }}>({filteredBucket.length})</span>
                 <button
                   onClick={() => setSelectedCategory('ALL')}
-                  className="ml-1 text-[11px] text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2 py-0.5 rounded border border-slate-700 transition-colors"
+                  className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg transition-colors ml-1"
+                  style={{ background: 'rgba(255,255,255,0.05)', color: '#6a6a76', border: '1px solid rgba(255,255,255,0.08)' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#e8e8ec')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#6a6a76')}
                 >
-                  ✕ Show all
+                  <X size={11} /> Show all
                 </button>
               </div>
             )}
@@ -439,11 +474,11 @@ export default function Room() {
                     key="standard-route"
                     encodedPolyline={activePolyline} 
                     pathCoordinates={activeCoordinates}
-                    strokeColor="#6366f1"
+                    strokeColor="#3b82f6"
                     strokeOpacity={0.9}
                     strokeWeight={5}
-                    arrowFillColor="#38bdf8"
-                    arrowStrokeColor="#312e81"
+                    arrowFillColor="#93c5fd"
+                    arrowStrokeColor="#1e3a8a"
                     zIndex={5}
                   />
                 )
@@ -469,8 +504,8 @@ export default function Room() {
             }}
             className={`hidden md:flex w-2 cursor-col-resize z-30 flex-shrink-0 transition-colors select-none relative items-center justify-center group ${
               isResizingSidebar
-                ? 'bg-indigo-600 shadow-[0_0_12px_rgba(99,102,241,0.7)]'
-                : 'bg-slate-900/90 hover:bg-indigo-600/50 border-l border-r border-slate-800/80 hover:border-indigo-500/50'
+                ? 'bg-brand-500 shadow-[0_0_12px_rgba(249,93,15,0.7)]'
+                : 'bg-surface-1 hover:bg-brand-500/30 border-l border-r border-white/5 hover:border-brand-500/40'
             }`}
             title="Drag to resize sidebar • Double-click to reset"
           >
@@ -479,7 +514,7 @@ export default function Room() {
               className={`w-0.5 rounded-full transition-all ${
                 isResizingSidebar 
                   ? 'bg-white h-12 shadow-sm' 
-                  : 'bg-slate-600 group-hover:bg-indigo-300 h-8 group-hover:h-10'
+                  : 'bg-white/20 group-hover:bg-brand-400 h-8 group-hover:h-10'
               }`} 
             />
           </div>
@@ -490,136 +525,120 @@ export default function Room() {
             className="flex flex-col flex-shrink-0 w-full h-[60vh] md:h-auto overflow-y-auto border-t md:border-t-0 relative overflow-x-hidden"
             style={{ 
               background: 'var(--color-surface-1)', 
-              borderColor: 'rgba(99,102,241,0.12)',
+              borderColor: 'rgba(255,255,255,0.06)',
               width: isDesktop ? `${sidebarWidth}px` : undefined,
               maxWidth: isDesktop ? '65vw' : undefined,
               minWidth: isDesktop ? `${MIN_SIDEBAR_WIDTH}px` : undefined,
             }}
           >
-            {/* Feature Tabs Header */}
-            <div className="flex items-center border-b border-slate-800/80 bg-slate-900/70 p-2 gap-2 shrink-0 sticky top-0 z-20 backdrop-blur">
+            {/* ── Feature Tabs ── */}
+            <div className="tab-bar">
               <button
                 type="button"
                 onClick={() => setActiveTab('bucket')}
-                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border ${
-                  activeTab === 'bucket'
-                    ? 'bg-indigo-600/30 border-indigo-500/80 text-white shadow-sm shadow-indigo-500/20'
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
+                className={`tab-btn ${activeTab === 'bucket' ? 'active' : ''}`}
               >
-                <span>📍 Bucket List</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                  activeTab === 'bucket' ? 'bg-indigo-500/40 text-indigo-100' : 'bg-slate-800 text-slate-400'
-                }`}>
-                  {bucketItems.length}
-                </span>
+                <BookMarked size={13} />
+                <span>Bucket List</span>
+                <span className="tab-count">{bucketItems.length}</span>
               </button>
-
               <button
                 type="button"
                 onClick={() => setActiveTab('routes')}
-                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 border ${
-                  activeTab === 'routes'
-                    ? 'bg-indigo-600/30 border-indigo-500/80 text-white shadow-sm shadow-indigo-500/20'
-                    : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
+                className={`tab-btn ${activeTab === 'routes' ? 'active' : ''}`}
               >
-                <span>🗺️ Routes</span>
-                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                  activeTab === 'routes' ? 'bg-indigo-500/40 text-indigo-100' : 'bg-slate-800 text-slate-400'
-                }`}>
-                  {routes.length}
-                </span>
+                <Route size={13} />
+                <span>Routes</span>
+                <span className="tab-count">{routes.length}</span>
               </button>
             </div>
 
             {/* TAB 1: BUCKET LIST */}
             {activeTab === 'bucket' && (
               <>
-                {/* SearchBar slot (Phase 2) */}
-                <div id="search-bar-slot" className="p-4 border-b border-slate-800/60 relative z-10 flex flex-col gap-3">
+                {/* Search + destination + filters */}
+                <div id="search-bar-slot" className="p-4 border-b relative z-10 flex flex-col gap-3"
+                     style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   <DestinationBar
                     currentDestination={explicitDestination}
                     bucketCount={bucketItems.length}
                     hasBucketItems={bucketItems.length > 0}
                     onSetDestination={handleSetDestination}
                   />
-                  <SearchBar 
-                    onAddPlace={handleAddPlace} 
-                    adding={addingPlace} 
+                  <SearchBar
+                    onAddPlace={handleAddPlace}
+                    adding={addingPlace}
                     destination={activeSearchDestination}
                   />
                   
-                  {/* Hidden Gem Toggle */}
+                  {/* Hidden Gems Toggle */}
                   <label className="flex items-center justify-between cursor-pointer group">
-                    <span className="text-xs text-slate-400 group-hover:text-white transition-colors">💎 Show Hidden Gems</span>
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer"
-                      checked={showHiddenGems}
-                      onChange={e => setShowHiddenGems(e.target.checked)}
-                    />
-                    <div className="w-8 h-4 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-indigo-500 relative"></div>
+                    <div className="flex items-center gap-2">
+                      <Gem size={12} style={{ color: showHiddenGems ? '#f95d0f' : '#4a4a54' }} />
+                      <span className="text-xs font-medium transition-colors"
+                            style={{ color: showHiddenGems ? '#e8e8ec' : '#6a6a76' }}>
+                        Hidden Gems
+                      </span>
+                    </div>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={showHiddenGems}
+                        onChange={e => setShowHiddenGems(e.target.checked)}
+                      />
+                      <span className="toggle-track" />
+                    </label>
                   </label>
 
-                  {/* Category Filter Pills (Group 5) */}
+                  {/* Category filter pills */}
                   {availableCategories.length > 0 && (
-                    <div className="flex flex-col gap-1.5 pt-2 border-t border-slate-800/80">
+                    <div className="flex flex-col gap-1.5 pt-2 border-t" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                          Categories
-                        </span>
+                        <span className="section-label">Categories</span>
                         {selectedCategory !== 'ALL' && (
                           <button
                             onClick={() => setSelectedCategory('ALL')}
-                            className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline"
+                            className="text-[10px] font-semibold"
+                            style={{ color: '#f95d0f' }}
                           >
                             Clear filter
                           </button>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                         <button
                           onClick={() => setSelectedCategory('ALL')}
-                          className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border ${
-                            selectedCategory === 'ALL'
-                              ? 'bg-indigo-600/30 border-indigo-500 text-white shadow-sm'
-                              : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-slate-200 hover:border-slate-600'
-                          }`}
+                          className={`cat-pill ${selectedCategory === 'ALL' ? 'active' : ''}`}
+                          style={selectedCategory === 'ALL'
+                            ? { background: 'rgba(249,93,15,0.2)', borderColor: 'rgba(249,93,15,0.5)', color: '#fff' }
+                            : {}}
                         >
-                          <span>All</span>
-                          <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-900/60 text-slate-300">
+                          All
+                          <span className="text-[10px] px-1.5 rounded-full"
+                                style={{ background: 'rgba(255,255,255,0.05)', color: '#6a6a76' }}>
                             {bucketItems.length}
                           </span>
                         </button>
-
                         {availableCategories.map((cat) => {
                           const isSelected = selectedCategory === cat;
                           const catColor = getCategoryColor(cat);
                           const catIcon = getCategoryIcon(cat);
                           const count = categoryCounts[cat] || 0;
-
                           return (
                             <button
                               key={cat}
                               onClick={() => setSelectedCategory(isSelected ? 'ALL' : cat)}
-                              className="px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 border shadow-sm"
-                              style={{
-                                backgroundColor: isSelected ? `${catColor}25` : 'rgba(30, 41, 59, 0.7)',
-                                borderColor: isSelected ? catColor : 'rgba(51, 65, 85, 0.6)',
-                                color: isSelected ? '#ffffff' : '#94a3b8',
-                                boxShadow: isSelected ? `0 0 10px ${catColor}30` : undefined,
-                              }}
+                              className="cat-pill"
+                              style={isSelected ? {
+                                background: `${catColor}20`,
+                                borderColor: catColor,
+                                color: '#fff',
+                              } : {}}
                             >
-                              <span className="text-xs">{catIcon}</span>
-                              <span>{cat}</span>
-                              <span 
-                                className="text-[10px] px-1.5 py-0.2 rounded-full"
-                                style={{
-                                  backgroundColor: isSelected ? `${catColor}40` : 'rgba(15, 23, 42, 0.6)',
-                                  color: isSelected ? '#ffffff' : '#94a3b8',
-                                }}
-                              >
+                              <CategoryIcon name={catIcon} size={10} />
+                              {cat}
+                              <span className="text-[10px] px-1.5 rounded-full"
+                                    style={{ background: isSelected ? `${catColor}30` : 'rgba(255,255,255,0.04)', color: isSelected ? '#fff' : '#4a4a54' }}>
                                 {count}
                               </span>
                             </button>
@@ -652,9 +671,9 @@ export default function Room() {
             {activeTab === 'routes' && (
               <div className="flex flex-col flex-1 overflow-y-auto">
                 <div id="proposed-routes-slot" className="flex-1 overflow-y-auto">
-                  <ProposedRoutes 
-                    routes={routes} 
-                    votesHook={votesHook} 
+                  <ProposedRoutes
+                    routes={routes}
+                    votesHook={votesHook}
                     onSelectRoute={(r) => setSelectedRouteId(r ? r.id : null)}
                     selectedRouteId={selectedRouteId}
                     onEditRoute={(r) => {
@@ -666,17 +685,16 @@ export default function Room() {
                   />
                 </div>
 
-                {/* RouteBuilder slot (Phase 4) */}
-                <div id="route-builder-slot" className="border-t border-slate-800/60 p-4 shrink-0 bg-surface-1">
-                  <RouteBuilder 
+                {/* RouteBuilder slot */}
+                <div id="route-builder-slot" className="border-t p-4 shrink-0"
+                     style={{ borderColor: 'rgba(255,255,255,0.05)', background: 'var(--color-surface-1)' }}>
+                  <RouteBuilder
                     roomId={room?.id ?? ''}
                     userId={user?.id}
                     availablePlaces={bucketItems}
                     editingRoute={editingRoute}
                     onClearEditing={() => {
-                      if (editingRoute) {
-                        setSelectedRouteId(editingRoute.id);
-                      }
+                      if (editingRoute) setSelectedRouteId(editingRoute.id);
                       setEditingRoute(null);
                     }}
                     onPreviewChange={setBuilderPreview}

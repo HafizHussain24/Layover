@@ -4,6 +4,11 @@ import { computeRoutes } from '../lib/routes';
 import { supabase } from '../lib/supabase';
 import { SortableList } from './SortableList';
 import { getCategoryColor, getCategoryIcon, type PlaceCategory } from '../lib/categories';
+import {
+  Car, Footprints, Wand2, ChevronRight, GripVertical,
+  X, Pencil, Check, Loader2, Route, Clock, Ruler, ArrowLeft,
+} from 'lucide-react';
+import CategoryIcon from './CategoryIcon';
 
 export interface RouteStop extends BucketLocation {
   _instanceId: string;
@@ -312,28 +317,37 @@ export default function RouteBuilder({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-white text-sm">
-          {editingRouteId ? 'Edit Route' : 'Build a Route'}
-        </h3>
+        <div className="flex items-center gap-2">
+          <Route size={15} style={{ color: '#f95d0f' }} />
+          <h3 className="font-display font-bold text-sm" style={{ color: '#e8e8ec' }}>
+            {editingRouteId ? 'Edit Route' : 'Build a Route'}
+          </h3>
+        </div>
         {editingRouteId && (
-          <button 
+          <button
             onClick={handleCancelOrDiscard}
-            className="text-[11px] text-slate-400 hover:text-white underline"
+            className="text-xs font-medium transition-colors"
+            style={{ color: '#4a4a54' }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#e8e8ec')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#4a4a54')}
           >
             Cancel Edit
           </button>
         )}
       </div>
 
+      {/* Route name field */}
       {editingRouteId ? (
-        <div className="bg-indigo-950/40 border border-indigo-500/30 p-2.5 rounded-lg flex flex-col gap-2">
+        <div className="flex flex-col gap-2 p-3 rounded-xl"
+             style={{ background: 'rgba(249,93,15,0.06)', border: '1.5px solid rgba(249,93,15,0.2)' }}>
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-indigo-300 flex items-center gap-1.5">
-              <span>✏️</span>
-              <span>Edit Route Name</span>
+            <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#ff9a5c' }}>
+              <Pencil size={11} />
+              Edit Route Name
             </span>
-            <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded">
+            <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(249,93,15,0.15)', color: '#ff9a5c' }}>
               {stops.length} stops
             </span>
           </div>
@@ -351,30 +365,29 @@ export default function RouteBuilder({
                 }
               }}
               placeholder="Enter route name"
-              className="flex-1 bg-slate-800/90 border border-slate-700 focus:border-indigo-500 text-white text-xs rounded p-2 outline-none transition-colors"
+              className="flex-1 text-xs px-3 py-2"
             />
             {editingRoute && routeName.trim() && routeName.trim() !== (editingRoute.route_name || '') && (
               <button
                 type="button"
                 onClick={handleQuickRename}
                 disabled={isSavingName}
-                className="px-2.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded transition-colors whitespace-nowrap shadow-sm disabled:opacity-50"
+                className="btn btn-success !py-2 !px-3 text-xs"
                 title="Save updated route name immediately"
               >
-                {isSavingName ? '...' : 'Save Name'}
+                {isSavingName ? <Loader2 size={13} className="animate-spin" /> : <><Check size={12} /> Save</>}
               </button>
             )}
           </div>
         </div>
       ) : (
-        /* Create Mode: Route Name Field */
-        <div className="flex flex-col gap-1">
-          <label className="text-[11px] font-semibold text-slate-300 flex items-center justify-between">
-            <span>Route Name</span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between">
+            <span className="section-label">Route Name</span>
             {routeName.trim() && (
-              <span className="text-[10px] text-indigo-400 font-normal">Custom title</span>
+              <span className="text-[10px]" style={{ color: '#f95d0f' }}>Custom title</span>
             )}
-          </label>
+          </div>
           <input
             type="text"
             value={routeName}
@@ -388,84 +401,90 @@ export default function RouteBuilder({
               }
             }}
             placeholder={
-              stops.length >= 2 
-                ? `${stops[0].name} to ${stops[stops.length - 1].name}` 
+              stops.length >= 2
+                ? `${stops[0].name} → ${stops[stops.length - 1].name}`
                 : 'Name this route (e.g., Morning Food Tour)'
             }
-            className="w-full bg-slate-800/90 border border-slate-700/80 focus:border-indigo-500 text-white text-xs rounded p-2 outline-none transition-colors placeholder-slate-500"
+            className="w-full text-xs px-3 py-2"
           />
         </div>
       )}
-      
+
+      {/* Error */}
       {errorStr && (
-        <div className="bg-red-900/50 border border-red-500/50 text-red-200 text-xs p-2 rounded">
+        <div className="text-xs px-3 py-2 rounded-xl"
+             style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5' }}>
           {errorStr}
         </div>
       )}
 
+      {/* Stops list */}
       {stops.length > 0 && (
         <SortableList
           items={stops}
           onReorder={handleMainReorder}
           keyExtractor={(s) => s._instanceId}
           renderItem={(stop, i, dragHandleProps, isDragging) => (
-            <div 
-              className={`flex items-center gap-2 bg-slate-800/50 p-2 rounded text-xs border transition-colors ${isDragging ? 'border-indigo-500 shadow-lg' : 'border-slate-700/50'} bg-surface-1/90 backdrop-blur`}
+            <div
+              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs transition-all"
+              style={{
+                background: isDragging ? 'rgba(249,93,15,0.1)' : 'var(--color-surface-3)',
+                border: `1.5px solid ${isDragging ? 'rgba(249,93,15,0.4)' : 'rgba(255,255,255,0.07)'}`,
+              }}
             >
-              <div 
-                {...dragHandleProps} 
-                className="flex items-center gap-1 cursor-grab active:cursor-grabbing text-slate-500 hover:text-white pl-1 pr-1 outline-none"
+              <div
+                {...dragHandleProps}
+                className="cursor-grab active:cursor-grabbing outline-none flex-shrink-0"
+                style={{ color: '#3a3a42' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="8" y1="6" x2="21" y2="6"></line>
-                  <line x1="8" y1="12" x2="21" y2="12"></line>
-                  <line x1="8" y1="18" x2="21" y2="18"></line>
-                  <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                  <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                  <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                </svg>
+                <GripVertical size={14} />
               </div>
-              <span className="w-4 h-4 flex items-center justify-center bg-indigo-500/20 text-indigo-400 rounded-full flex-shrink-0 text-[10px] font-bold">
+              <span
+                className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold flex-shrink-0 text-white"
+                style={{ background: '#f95d0f' }}
+              >
                 {i + 1}
               </span>
-              <span className="flex-1 truncate text-white">{stop.name}</span>
-              <div className="flex items-center">
-                <button onClick={() => handleRemove(i)} className="px-1 ml-1 text-red-400 hover:text-red-300">✕</button>
-              </div>
+              <span className="flex-1 truncate" style={{ color: '#e8e8ec' }}>{stop.name}</span>
+              <button
+                onClick={() => handleRemove(i)}
+                className="p-0.5 rounded transition-colors flex-shrink-0"
+                style={{ color: '#4a4a54' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#4a4a54')}
+              >
+                <X size={12} />
+              </button>
             </div>
           )}
         />
       )}
 
+      {/* Add stop */}
       {stops.length < 6 && (
-        <div className="flex flex-col gap-2 mt-1">
-          {/* Quick Category Filter for Available Stops */}
+        <div className="flex flex-col gap-2">
+          {/* Category filter pills */}
           {builderAvailableCategories.length > 1 && (
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400 font-semibold">
-                  Filter places by category:
-                </span>
+                <span className="section-label">Filter by category</span>
                 {builderCategoryFilter !== 'ALL' && (
                   <button
                     type="button"
                     onClick={() => setBuilderCategoryFilter('ALL')}
-                    className="text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold underline"
+                    className="text-[10px] font-semibold"
+                    style={{ color: '#f95d0f' }}
                   >
                     Show all ({remainingPlaces.length})
                   </button>
                 )}
               </div>
-
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none no-scrollbar">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
                 <button
                   type="button"
                   onClick={() => setBuilderCategoryFilter('ALL')}
-                  className={`px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap transition-all border ${
-                    builderCategoryFilter === 'ALL'
-                      ? 'bg-indigo-600/30 border-indigo-500 text-white shadow-sm'
-                      : 'bg-slate-800/80 border-slate-700/60 text-slate-400 hover:text-slate-200'
-                  }`}
+                  className={`cat-pill ${builderCategoryFilter === 'ALL' ? 'active' : ''}`}
+                  style={builderCategoryFilter === 'ALL' ? { background: 'rgba(249,93,15,0.2)', borderColor: 'rgba(249,93,15,0.5)', color: '#fff' } : {}}
                 >
                   All ({remainingPlaces.length})
                 </button>
@@ -474,22 +493,20 @@ export default function RouteBuilder({
                   const catColor = getCategoryColor(cat);
                   const catIcon = getCategoryIcon(cat);
                   const count = remainingPlaces.filter(p => (p.category || 'Attraction') === cat).length;
-
                   return (
                     <button
                       key={cat}
                       type="button"
                       onClick={() => setBuilderCategoryFilter(isSelected ? 'ALL' : cat)}
-                      className="px-2 py-0.5 rounded text-[10px] font-semibold whitespace-nowrap transition-all border flex items-center gap-1 shadow-sm"
-                      style={{
-                        backgroundColor: isSelected ? `${catColor}25` : 'rgba(30, 41, 59, 0.7)',
-                        borderColor: isSelected ? catColor : 'rgba(51, 65, 85, 0.6)',
-                        color: isSelected ? '#ffffff' : '#94a3b8',
-                      }}
+                      className="cat-pill"
+                      style={isSelected ? {
+                        background: `${catColor}20`,
+                        borderColor: catColor,
+                        color: '#fff',
+                      } : {}}
                     >
-                      <span>{catIcon}</span>
-                      <span>{cat}</span>
-                      <span className="opacity-75">({count})</span>
+                      <CategoryIcon name={catIcon} size={10} />
+                      {cat} ({count})
                     </button>
                   );
                 })}
@@ -497,92 +514,129 @@ export default function RouteBuilder({
             </div>
           )}
 
-          {/* Add Stop Dropdown */}
-          <select 
-            onChange={handleAddStop} 
-            className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded p-2 outline-none focus:border-indigo-500 transition-colors"
+          {/* Dropdown */}
+          <select
+            onChange={handleAddStop}
+            className="w-full text-xs px-3 py-2.5"
             value=""
           >
             <option value="" disabled>
               {builderCategoryFilter === 'ALL'
-                ? `+ Add stop (${remainingPlaces.length} places available)`
-                : `+ Add ${getCategoryIcon(builderCategoryFilter)} ${builderCategoryFilter} stop (${displayedPlaces.length} available)`}
+                ? `Add a stop… (${remainingPlaces.length} available)`
+                : `Add ${builderCategoryFilter} stop… (${displayedPlaces.length} available)`}
             </option>
             {builderCategoryFilter === 'ALL' ? (
-              // Grouped by Category in the dropdown
               builderAvailableCategories.map(cat => (
-                <optgroup key={cat} label={`${getCategoryIcon(cat)} ${cat}`}>
+                <optgroup key={cat} label={cat}>
                   {remainingPlaces
                     .filter(p => (p.category || 'Attraction') === cat)
                     .map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
+                      <option key={p.id} value={p.id}>{p.name}</option>
                     ))}
                 </optgroup>
               ))
             ) : (
-              // Filtered by Selected Category
               displayedPlaces.map(p => (
-                <option key={p.id} value={p.id}>
-                  {getCategoryIcon(p.category)} {p.name}
-                </option>
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))
             )}
           </select>
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-2 mt-2">
-        <select 
-          value={travelMode} 
-          onChange={(e) => setTravelMode(e.target.value as 'DRIVE' | 'WALK')}
-          className="bg-slate-800 border border-slate-700 text-white text-xs rounded p-1.5 outline-none"
-        >
-          <option value="DRIVE">🚗 Drive</option>
-          <option value="WALK">🚶 Walk</option>
-        </select>
-        
+      {/* Travel mode + action buttons */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Travel mode toggle */}
+        <div className="flex items-center rounded-xl overflow-hidden"
+             style={{ border: '1.5px solid rgba(255,255,255,0.07)' }}>
+          <button
+            type="button"
+            onClick={() => setTravelMode('DRIVE')}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all"
+            style={travelMode === 'DRIVE' ? {
+              background: 'rgba(249,93,15,0.2)',
+              color: '#ff9a5c',
+            } : {
+              background: 'transparent',
+              color: '#4a4a54',
+            }}
+          >
+            <Car size={13} />
+            Drive
+          </button>
+          <button
+            type="button"
+            onClick={() => setTravelMode('WALK')}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold transition-all"
+            style={travelMode === 'WALK' ? {
+              background: 'rgba(249,93,15,0.2)',
+              color: '#ff9a5c',
+            } : {
+              background: 'transparent',
+              color: '#4a4a54',
+            }}
+          >
+            <Footprints size={13} />
+            Walk
+          </button>
+        </div>
+
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => handleComputeRoute(true)}
             disabled={stops.length < 4 || isComputing}
-            className="btn btn-secondary !py-1.5 !px-3 text-xs border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/10"
-            title="Automatically reorders intermediate stops to save time (needs 4+ stops)"
+            className="btn btn-ghost !py-2 !px-3 text-xs gap-1.5"
+            title="Reorders stops to minimize travel time (needs 4+ stops)"
           >
-            {isComputing ? '...' : '✨ Optimize'}
+            <Wand2 size={12} />
+            Optimize
           </button>
-          <button 
+          <button
             onClick={() => handleComputeRoute(false)}
             disabled={stops.length < 2 || isComputing}
-            className="btn btn-primary !py-1.5 !px-3 text-xs"
+            className="btn btn-primary !py-2 !px-3 text-xs gap-1.5"
           >
-            {isComputing ? '...' : (editingRouteId ? 'Preview & Update' : 'Preview Route')}
+            {isComputing
+              ? <><Loader2 size={13} className="animate-spin" /> Computing…</>
+              : <>{editingRouteId ? 'Preview & Update' : 'Preview Route'}<ChevronRight size={13} /></>
+            }
           </button>
         </div>
       </div>
 
-      {/* Preview Sidebar Overlay */}
+      {/* ── Preview overlay ── */}
       {preview && (
-        <div className="absolute inset-0 z-50 bg-[#0f0f1a] flex flex-col animate-in slide-in-from-right-full duration-300">
-          <div className="p-4 border-b border-slate-800/60 flex items-center justify-between">
+        <div className="absolute inset-0 z-50 flex flex-col"
+             style={{ background: 'var(--color-surface-1)' }}>
+          {/* Overlay header */}
+          <div className="flex items-center justify-between px-4 py-3.5 border-b shrink-0"
+               style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
             <div className="flex items-center gap-2">
-              <h3 className="font-bold text-white text-lg">
+              <Route size={16} style={{ color: '#f95d0f' }} />
+              <h3 className="font-display font-bold text-base" style={{ color: '#e8e8ec' }}>
                 {editingRouteId ? 'Edit Route' : 'Route Preview'}
               </h3>
               {editingRouteId && (
-                <span className="px-2 py-0.5 bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded text-[10px] font-bold">
+                <span className="badge" style={{ background: 'rgba(249,93,15,0.15)', color: '#ff9a5c', borderColor: 'rgba(249,93,15,0.3)' }}>
                   Editing
                 </span>
               )}
             </div>
-            <button onClick={handleCancelOrDiscard} className="text-slate-400 hover:text-white">✕</button>
+            <button
+              onClick={handleCancelOrDiscard}
+              className="p-1.5 rounded-lg transition-colors"
+              style={{ color: '#4a4a54' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#e8e8ec')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#4a4a54')}
+            >
+              <X size={16} />
+            </button>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-            {/* Editable Route Name */}
+            {/* Route name */}
             <div>
-              <label className="text-xs text-slate-400 font-semibold mb-1 block">Route Name</label>
+              <label className="section-label mb-2 block">Route Name</label>
               <input
                 type="text"
                 value={preview.routeName}
@@ -593,89 +647,112 @@ export default function RouteBuilder({
                   setPreview(updated);
                   onPreviewChange?.(updated);
                 }}
-                className="w-full bg-slate-800 border border-slate-700 text-white text-xs rounded p-2 outline-none focus:border-indigo-500"
+                className="w-full text-xs px-3 py-2.5"
                 placeholder="Route name"
               />
             </div>
 
-            <div className={`flex justify-between items-center p-3 rounded-lg border transition-colors ${editingRouteId ? 'bg-emerald-950/20 border-emerald-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}>
-              <div className="text-center">
-                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Time</div>
-                <div className={`font-bold ${editingRouteId ? 'text-emerald-400' : 'text-indigo-400'}`}>{Math.round(parseInt(preview.route.duration) / 60)} min</div>
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col items-center p-3 rounded-xl"
+                   style={{ background: 'var(--color-surface-3)', border: '1.5px solid rgba(255,255,255,0.06)' }}>
+                <Clock size={14} style={{ color: editingRouteId ? '#10b981' : '#f95d0f', marginBottom: 4 }} />
+                <div className="section-label mb-0.5">Time</div>
+                <div className="text-sm font-bold" style={{ color: editingRouteId ? '#6ee7b7' : '#ff9a5c' }}>
+                  {Math.round(parseInt(preview.route.duration) / 60)} min
+                </div>
               </div>
-              <div className={`w-px h-8 ${editingRouteId ? 'bg-emerald-500/20' : 'bg-slate-700'}`}></div>
-              <div className="text-center">
-                <div className="text-xs text-slate-400 uppercase tracking-wider mb-1">Distance</div>
-                <div className={`font-bold ${editingRouteId ? 'text-emerald-400' : 'text-indigo-400'}`}>{(preview.route.distanceMeters / 1000).toFixed(1)} km</div>
+              <div className="flex flex-col items-center p-3 rounded-xl"
+                   style={{ background: 'var(--color-surface-3)', border: '1.5px solid rgba(255,255,255,0.06)' }}>
+                <Ruler size={14} style={{ color: editingRouteId ? '#10b981' : '#f95d0f', marginBottom: 4 }} />
+                <div className="section-label mb-0.5">Distance</div>
+                <div className="text-sm font-bold" style={{ color: editingRouteId ? '#6ee7b7' : '#ff9a5c' }}>
+                  {(preview.route.distanceMeters / 1000).toFixed(1)} km
+                </div>
               </div>
             </div>
 
+            {/* Editing map comparison legend */}
             {editingRouteId && (
-              <div className="flex items-center justify-between bg-slate-800/80 px-3 py-2 rounded-lg border border-slate-700/60 text-xs">
-                <span className="text-slate-300 font-medium">Map Comparison:</span>
+              <div className="flex items-center justify-between px-3 py-2 rounded-xl text-xs"
+                   style={{ background: 'var(--color-surface-3)', border: '1.5px solid rgba(255,255,255,0.06)' }}>
+                <span className="font-medium" style={{ color: '#6a6a76' }}>Map comparison:</span>
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1.5 text-blue-400 font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm"></span> Original
+                  <span className="flex items-center gap-1.5 font-semibold" style={{ color: '#60a5fa' }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#3b82f6' }} /> Original
                   </span>
-                  <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-sm"></span> Live New
+                  <span className="flex items-center gap-1.5 font-semibold" style={{ color: '#34d399' }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: '#10b981', boxShadow: '0 0 6px #10b981' }} /> Live
                   </span>
                 </div>
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400 font-medium">Stops sequence (drag to reorder)</span>
-              <button
-                onClick={() => {
-                  setPreview(null);
-                  onPreviewChange?.(null);
-                }}
-                className="text-xs text-indigo-400 hover:text-indigo-300 underline"
-              >
-                ← Add/remove stops
-              </button>
-            </div>
-
-            <SortableList
-              items={preview.stops}
-              onReorder={handlePreviewReorderDrop}
-              keyExtractor={(s) => s._instanceId}
-              renderItem={(s, i, dragHandleProps, isDragging) => (
-                <div 
-                  className={`flex items-center gap-2 text-sm text-slate-300 bg-slate-800 p-2 rounded border transition-colors ${isDragging ? (editingRouteId ? 'border-emerald-500 shadow-lg' : 'border-indigo-500 shadow-lg') : 'border-slate-700/30'} shadow-md`}
+            {/* Stops sequence */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="section-label">Stops (drag to reorder)</span>
+                <button
+                  onClick={() => { setPreview(null); onPreviewChange?.(null); }}
+                  className="flex items-center gap-1 text-xs font-medium transition-colors"
+                  style={{ color: '#4a4a54' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#f95d0f')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#4a4a54')}
                 >
-                  <div 
-                    {...dragHandleProps}
-                    className={`flex items-center gap-1 px-1 outline-none ${isComputing ? 'opacity-30 cursor-not-allowed' : 'cursor-grab active:cursor-grabbing hover:text-white'} text-slate-500`}
+                  <ArrowLeft size={11} />
+                  Edit stops
+                </button>
+              </div>
+
+              <SortableList
+                items={preview.stops}
+                onReorder={handlePreviewReorderDrop}
+                keyExtractor={(s) => s._instanceId}
+                renderItem={(s, i, dragHandleProps, isDragging) => (
+                  <div
+                    className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-sm transition-all"
+                    style={{
+                      background: isDragging
+                        ? (editingRouteId ? 'rgba(16,185,129,0.1)' : 'rgba(249,93,15,0.1)')
+                        : 'var(--color-surface-3)',
+                      border: `1.5px solid ${isDragging
+                        ? (editingRouteId ? 'rgba(16,185,129,0.4)' : 'rgba(249,93,15,0.4)')
+                        : 'rgba(255,255,255,0.07)'}`,
+                    }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="8" y1="6" x2="21" y2="6"></line>
-                      <line x1="8" y1="12" x2="21" y2="12"></line>
-                      <line x1="8" y1="18" x2="21" y2="18"></line>
-                      <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                      <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                      <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                    </svg>
+                    <div
+                      {...dragHandleProps}
+                      className={`outline-none flex-shrink-0 ${isComputing ? 'opacity-30 cursor-not-allowed' : 'cursor-grab active:cursor-grabbing'}`}
+                      style={{ color: '#3a3a42' }}
+                    >
+                      <GripVertical size={14} />
+                    </div>
+                    <span
+                      className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold flex-shrink-0 text-white"
+                      style={{ background: editingRouteId ? '#10b981' : '#f95d0f' }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 truncate text-xs" style={{ color: '#e8e8ec' }}>{s.name}</span>
                   </div>
-                  <span className={`w-5 h-5 flex items-center justify-center ${editingRouteId ? 'bg-emerald-600' : 'bg-indigo-500'} text-white rounded-full flex-shrink-0 text-[10px] font-bold`}>
-                    {i + 1}
-                  </span>
-                  <span className="flex-1 truncate">{s.name}</span>
-                </div>
-              )}
-            />
+                )}
+              />
+            </div>
           </div>
 
-          <div className="p-4 border-t border-slate-800/60 flex gap-2">
-            <button 
-              className="btn btn-secondary flex-1" 
-              onClick={handleCancelOrDiscard}
-            >
+          {/* Overlay actions */}
+          <div className="px-4 py-3 border-t flex gap-2 shrink-0"
+               style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
+            <button className="btn btn-secondary flex-1" onClick={handleCancelOrDiscard}>
               {editingRouteId ? 'Cancel' : 'Discard'}
             </button>
-            <button 
-              className={`btn flex-1 ${editingRouteId ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-900/40 font-bold' : 'btn-primary'}`} 
+            <button
+              className={`btn flex-1 ${editingRouteId ? '' : 'btn-primary'}`}
+              style={editingRouteId ? {
+                background: 'linear-gradient(135deg, #059669, #047857)',
+                color: 'white',
+                boxShadow: '0 4px 16px rgba(5,150,105,0.35)',
+              } : undefined}
               onClick={handleSavePreview}
               disabled={isComputing}
             >

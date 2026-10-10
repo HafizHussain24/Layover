@@ -11,7 +11,7 @@ export const isMock = true;
 
 export const DEMO_ROOM: Room = {
   id: 'demo-room-kochi',
-  name: 'Kochi Weekend 🌴',
+  name: 'Kochi Weekend',
   created_by: 'demo-user-1',
   created_at: new Date().toISOString(),
 };

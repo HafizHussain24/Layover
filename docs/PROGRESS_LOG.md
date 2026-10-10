@@ -463,3 +463,49 @@ _(ideas out of scope, to be added here rather than in code)_
 - Verified: Clean build (0 errors).
 - Blockers / waiting on user: Run migration `002_room_destination.sql` in Supabase SQL Editor to persist destinations to PostgreSQL.
 - Next: Ask user to run migration 002 in Supabase and test destination-biased search.
+
+### Entry 26 | UI Redesign | Warm Midnight Theme, Sleek Design System & Zero-Emoji Modernization
+- Time: Post-Phase 5
+- User request: "I want you to completely redesign and improve the UI design of the project. Introduce a premium yet friendly theme that matches the project. Including the home page, and the other pages and elements. Replace all emojis used with new sleek, clean and understandable symbols." & "The agent was in the middle of redesigning the entire UI design of the project, Follow in its footsteps and complete what it was doing."
+- Done:
+  - **Replaced Emojis with Sleek Icons:**
+    - Installed `lucide-react` and created `CategoryIcon.tsx` to dynamically render clean vector icons for each category (UtensilsCrossed, Coffee, IceCreamCone, Landmark, TreePine, ShoppingBag, Wine, BedDouble, Train, MapPin).
+    - Replaced all emojis in markers (`PlaceMarker.tsx`), category pills, headers (`Room.tsx`), route cards (`ProposedRoutes.tsx`), builder mode options (`RouteBuilder.tsx`), destination bars (`DestinationBar.tsx`), and demo seed data (`seedData.ts`).
+    - Replaced plain text star `★` with filled vector `Star` icons in `SearchBar.tsx` and `BucketList.tsx`.
+  - **Comprehensive Design System (`src/index.css`):**
+    - Established the **"Warm Midnight"** theme: charcoal slate surface levels (`--color-surface-0` through `--color-surface-4`), deep coral-orange brand highlights (`#f95d0f`, `#ff7a38`), and muted violet secondary accents.
+    - Imported Google Fonts (`Plus Jakarta Sans` for titles and `Inter` for body).
+    - Designed custom tokens for glassmorphism cards (`.glass`, `.glass-subtle`), buttons (`.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-danger`), badges, sticky feature tabs, switch toggles, and animated transitions.
+  - **Redesigned Home Page (`src/pages/Home.tsx`):**
+    - Built a high-conversion landing page layout with glowing radial ambient lighting, floating compass logo badge, feature pill showcase, glass creation card with destination city autocomplete, and join card.
+  - **Redesigned Room Shell & Navigation (`src/pages/Room.tsx`):**
+    - Glass top bar with compass brand mark, real-time presence avatar cluster, and WhatsApp/link share actions.
+    - Sticky sidebar feature tabs (`Bucket List` and `Routes`) with item count badges.
+    - Floating map banners for isolated route viewing, live before/after route comparison (`Original (Blue)` vs `Live (Green)`), and active category filters.
+    - Resizable sidebar handle styled with brand glows and grabber indicator.
+  - **Redesigned Components (`BucketList.tsx`, `RouteBuilder.tsx`, `ProposedRoutes.tsx`, `DestinationBar.tsx`, `DisplayNamePrompt.tsx`, `InstagramImport.tsx`, `RoutePolyline.tsx`):**
+    - Unified typography, spacing, border radiuses, and color tokens across all forms, overlays, and modals.
+    - Resolved TypeScript build errors (lucide imports, unused variables, styling bindings).
+    - Updated `index.html` theme color to `#0d0d0f`.
+  - Verified clean TypeScript build (`tsc -b && vite build` completed with 0 errors).
+- Decisions: Shifted from generic generic-blue AI templates to an artisanal Warm Midnight travel aesthetic with high contrast, crisp icons, and fluid animations.
+- Verified: Clean build (0 errors) and dev server running.
+- Blockers / waiting on user: None.
+- Next: Ask user to test and experience the redesigned UI in browser.
+
+### Entry 27 | Bugfix | Presence Avatar Tooltip Stacking & Z-Index Elevation
+- Time: Post-Phase 5
+- User request: "When hovering over the people in the room, the name is lost behind the sidebar."
+- Done:
+  - Diagnosed that `<header>` had `z-20`, which placed it at the same stacking level as `.tab-bar` (`z-20`) and below the desktop divider (`z-30`). Because the main layout container comes after `<header>` in DOM order, elements overflowing downwards from the header were clipped behind the sidebar tabs.
+  - Elevated `<header>` in [src/pages/Room.tsx](file:///d:/Projects/Layover/src/pages/Room.tsx#L330) to `z-40 relative`, ensuring that the header and all its tooltips strictly overlay the sidebar, tab bar, and map.
+  - Updated [src/components/PresenceBar.tsx](file:///d:/Projects/Layover/src/components/PresenceBar.tsx):
+    - Added `hover:z-30` on each avatar container to ensure active avatar tooltips appear above adjacent avatars in the overlapping cluster.
+    - Added an upward-pointing indicator notch and high-contrast surface shadow (`#1c1c1f` / `--color-surface-3` with subtle border and `shadow-2xl`).
+    - Removed native browser `title` attribute to avoid duplicate OS tooltip collisions.
+  - Verified clean TypeScript build (`tsc -b && vite build` succeeded with 0 errors).
+- Verified: Clean build (0 errors) and dev server updated via HMR.
+- Blockers / waiting on user: None.
+- Next: Ask user to verify tooltip in browser.
+
+

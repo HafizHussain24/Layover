@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { createRoom } from '../hooks/useRoom';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
+import {
+  MapPin, Users, Globe, ArrowRight, Loader2,
+  X, Check, Compass, Zap, Route, Star,
+} from 'lucide-react';
 
 export default function Home() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -21,11 +25,7 @@ export default function Home() {
   const handleDestInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setDestQuery(val);
-    if (!placesLib || !val.trim()) {
-      setDestSuggestions([]);
-      return;
-    }
-
+    if (!placesLib || !val.trim()) { setDestSuggestions([]); return; }
     try {
       const res = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
         input: val,
@@ -34,11 +34,9 @@ export default function Home() {
       setDestSuggestions(res.suggestions || []);
     } catch (_) {
       try {
-        const fallback = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: val });
-        setDestSuggestions(fallback.suggestions || []);
-      } catch {
-        setDestSuggestions([]);
-      }
+        const fb = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: val });
+        setDestSuggestions(fb.suggestions || []);
+      } catch { setDestSuggestions([]); }
     }
   };
 
@@ -50,14 +48,10 @@ export default function Home() {
       const name = place.displayName || suggestion.placePrediction.text.text;
       const lat = place.location?.lat();
       const lng = place.location?.lng();
-      if (typeof lat === 'number' && typeof lng === 'number') {
-        setSelectedDest({ name, lat, lng });
-      }
+      if (typeof lat === 'number' && typeof lng === 'number') setSelectedDest({ name, lat, lng });
       setDestQuery('');
       setDestSuggestions([]);
-    } catch (err) {
-      console.error('Failed to select destination:', err);
-    }
+    } catch (err) { console.error('Failed to select destination:', err); }
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -83,167 +77,221 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12"
-          style={{ background: 'linear-gradient(135deg, #0f0f1a 0%, #16162a 50%, #1a1030 100%)' }}>
-      {/* Hero */}
-      <div className="text-center mb-12 animate-in">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full mb-6"
-             style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.25)' }}>
-          <span className="text-lg">✈️</span>
-          <span className="text-sm font-semibold text-indigo-300 tracking-wide">Group Trip Planner</span>
-        </div>
-        <h1 className="text-5xl font-extrabold mb-4 gradient-text">WanderRoom</h1>
-        <p className="text-slate-400 text-lg max-w-md mx-auto leading-relaxed">
-          Drop places, build routes, vote together.
-          <br />
-          <span className="text-indigo-300">Real-time group trip planning.</span>
-        </p>
+    <main className="home-bg min-h-screen flex flex-col relative overflow-hidden">
+      {/* Subtle glow blobs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-32 left-1/4 w-96 h-96 rounded-full opacity-10"
+             style={{ background: 'radial-gradient(circle, #f95d0f, transparent 70%)' }} />
+        <div className="absolute bottom-0 right-1/4 w-80 h-80 rounded-full opacity-6"
+             style={{ background: 'radial-gradient(circle, #8b5cf6, transparent 70%)' }} />
       </div>
 
-      {/* Cards */}
-      <div className="w-full max-w-md space-y-4 animate-in" style={{ animationDelay: '0.1s' }}>
-        {/* Create Room */}
-        <div className="glass p-6">
-          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <span>🗺️</span> Create a Room
-          </h2>
-          <form onSubmit={handleCreate} className="space-y-3">
-            <input
-              id="room-name-input"
-              type="text"
-              placeholder="e.g. Kochi Weekend 🌴"
-              value={roomName}
-              onChange={(e) => setRoomName(e.target.value)}
-              className="w-full px-4 py-3 text-sm"
-              style={{ borderRadius: '0.625rem' }}
-              maxLength={60}
-              disabled={creating || !user}
-            />
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 py-16">
 
-            {/* Trip Destination (Optional) */}
-            <div className="relative">
-              {selectedDest ? (
-                <div className="flex items-center justify-between px-3.5 py-2.5 bg-indigo-950/60 border border-indigo-500/40 rounded-[0.625rem] text-xs text-white">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="text-sm">📍</span>
-                    <span className="font-semibold truncate">{selectedDest.name}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDest(null)}
-                    className="p-1 text-slate-400 hover:text-white transition-colors"
-                    title="Remove destination"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="📍 Destination (e.g. Kozhikode, Tokyo) - optional"
-                    value={destQuery}
-                    onChange={handleDestInputChange}
-                    className="w-full px-4 py-2.5 text-xs bg-slate-900/60 border border-slate-700/60 rounded-[0.625rem] text-white placeholder-slate-500 outline-none focus:border-indigo-500/60 transition-colors"
-                    disabled={creating || !user}
-                  />
-                  {destSuggestions.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-700 shadow-2xl overflow-hidden z-30 max-h-48 overflow-y-auto">
-                      {destSuggestions.map((s, i) => (
-                        <button
-                          key={s.placePrediction?.placeId || i}
-                          type="button"
-                          onClick={() => handleSelectDest(s)}
-                          className="w-full text-left px-3 py-2.5 hover:bg-indigo-600/20 border-b border-slate-800 last:border-b-0 text-xs flex items-center gap-2.5 text-white transition-colors group"
-                        >
-                          <span className="opacity-60 group-hover:opacity-100">🏙️</span>
-                          <span className="truncate">{s.placePrediction?.text.text}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+        {/* ── Logo + tagline ──────────────────────────────── */}
+        <div className="text-center mb-12 animate-in">
+          {/* Logo mark */}
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6 shadow-2xl"
+               style={{ background: 'linear-gradient(135deg, #ff7a38, #f95d0f)', boxShadow: '0 8px 32px rgba(249,93,15,0.4)' }}>
+            <Compass size={30} color="white" strokeWidth={2} />
+          </div>
+
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4"
+               style={{ background: 'rgba(249,93,15,0.1)', border: '1px solid rgba(249,93,15,0.2)' }}>
+            <Zap size={12} className="text-brand" style={{ color: '#ff9a5c' }} />
+            <span className="text-xs font-semibold" style={{ color: '#ff9a5c', letterSpacing: '0.04em' }}>
+              Real-time group trip planning
+            </span>
+          </div>
+
+          <h1 className="font-display text-5xl sm:text-6xl font-extrabold mb-4 gradient-text tracking-tight">
+            WanderRoom
+          </h1>
+          <p className="text-lg max-w-sm mx-auto leading-relaxed" style={{ color: '#6a6a76' }}>
+            Drop places, build routes,{' '}
+            <span style={{ color: '#c8c8d0' }}>vote together.</span>
+          </p>
+        </div>
+
+        {/* ── Feature pills ──────────────────────────────── */}
+        <div className="flex items-center gap-3 mb-10 flex-wrap justify-center animate-in" style={{ animationDelay: '0.05s' }}>
+          {[
+            { icon: <Users size={12} />, label: 'Multiplayer' },
+            { icon: <Route size={12} />, label: 'Route Builder' },
+            { icon: <Star size={12} />, label: 'Hidden Gems' },
+            { icon: <Globe size={12} />, label: 'Share via WhatsApp' },
+          ].map(f => (
+            <span key={f.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', color: '#6a6a76' }}>
+              <span style={{ color: '#4a4a54' }}>{f.icon}</span>
+              {f.label}
+            </span>
+          ))}
+        </div>
+
+        {/* ── Cards container ─────────────────────────────── */}
+        <div className="w-full max-w-[420px] space-y-3 animate-in" style={{ animationDelay: '0.1s' }}>
+
+          {/* Create Room */}
+          <div className="glass p-6">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                   style={{ background: 'rgba(249,93,15,0.15)', border: '1px solid rgba(249,93,15,0.25)' }}>
+                <Globe size={15} style={{ color: '#ff9a5c' }} />
+              </div>
+              <h2 className="font-display font-bold text-base" style={{ color: '#e8e8ec' }}>
+                Create a Room
+              </h2>
             </div>
-            {authLoading && (
-              <p className="text-xs text-indigo-300 flex items-center gap-1">
-                <span className="spinner w-3 h-3 border-2 border-indigo-300 border-t-transparent" /> Connecting to server...
-              </p>
-            )}
-            {!authLoading && !user && (
-              <p className="text-xs text-red-400 flex items-center gap-1">
-                <span>❌</span> Connection failed. Did you enable Anonymous Sign-ins in Supabase?
-              </p>
-            )}
-            {!authLoading && user && !profile && (
-              <p className="text-xs text-amber-400 flex items-center gap-1">
-                <span>⚠️</span> You'll be asked for your name when you enter the room.
-              </p>
-            )}
-            {error && (
-              <p className="text-xs text-red-400">{error}</p>
-            )}
-            <button
-              id="create-room-btn"
-              type="submit"
-              className="btn btn-primary w-full"
-              disabled={creating || authLoading || !user || !roomName.trim()}
-            >
-              {creating ? (
-                <><span className="spinner" /> Creating...</>
-              ) : (
-                '✨ Create Room'
+
+            <form onSubmit={handleCreate} className="space-y-3">
+              {/* Room name */}
+              <input
+                id="room-name-input"
+                type="text"
+                placeholder="e.g. Kochi Weekend"
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                className="w-full px-4 py-3 text-sm"
+                maxLength={60}
+                disabled={creating || !user}
+              />
+
+              {/* Destination */}
+              <div className="relative">
+                {selectedDest ? (
+                  <div className="flex items-center justify-between px-3.5 py-3 rounded-[10px] text-xs"
+                       style={{ background: 'rgba(249,93,15,0.08)', border: '1.5px solid rgba(249,93,15,0.25)' }}>
+                    <div className="flex items-center gap-2.5">
+                      <MapPin size={13} style={{ color: '#f95d0f', flexShrink: 0 }} />
+                      <span className="font-semibold truncate" style={{ color: '#e8e8ec' }}>{selectedDest.name}</span>
+                    </div>
+                    <button type="button" onClick={() => setSelectedDest(null)}
+                            className="p-1 rounded transition-colors"
+                            style={{ color: '#6a6a76' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = '#e8e8ec')}
+                            onMouseLeave={e => (e.currentTarget.style.color = '#6a6a76')}>
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                      <MapPin size={13} style={{ color: '#4a4a54' }} />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Destination city (optional) — e.g. Tokyo"
+                      value={destQuery}
+                      onChange={handleDestInputChange}
+                      className="w-full pl-9 pr-4 py-3 text-xs"
+                      disabled={creating || !user}
+                    />
+                    {destSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1.5 autocomplete-dropdown z-30 max-h-52 overflow-y-auto">
+                        {destSuggestions.map((s, i) => (
+                          <button key={s.placePrediction?.placeId || i} type="button"
+                                  onClick={() => handleSelectDest(s)}
+                                  className="autocomplete-item w-full text-left">
+                            <Globe size={13} style={{ color: '#4a4a54', flexShrink: 0 }} />
+                            <span className="text-xs truncate" style={{ color: '#e8e8ec' }}>
+                              {s.placePrediction?.text.text}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Status messages */}
+              {authLoading && (
+                <p className="text-xs flex items-center gap-2" style={{ color: '#6a6a76' }}>
+                  <Loader2 size={12} className="animate-spin" style={{ color: '#f95d0f' }} />
+                  Connecting…
+                </p>
               )}
-            </button>
-          </form>
-        </div>
+              {!authLoading && !user && (
+                <p className="text-xs flex items-center gap-2" style={{ color: '#f87171' }}>
+                  <X size={12} />
+                  Connection failed. Enable Anonymous Sign-ins in Supabase.
+                </p>
+              )}
+              {!authLoading && user && !profile && (
+                <p className="text-xs" style={{ color: '#6a6a76' }}>
+                  You'll choose your display name when you enter the room.
+                </p>
+              )}
+              {error && <p className="text-xs" style={{ color: '#f87171' }}>{error}</p>}
 
-        {/* Divider */}
-        <div className="flex items-center gap-3 text-slate-600">
-          <div className="flex-1 h-px bg-slate-800" />
-          <span className="text-xs font-medium">or join one</span>
-          <div className="flex-1 h-px bg-slate-800" />
-        </div>
+              <button id="create-room-btn" type="submit"
+                      className="btn btn-primary w-full"
+                      disabled={creating || authLoading || !user || !roomName.trim()}>
+                {creating ? (
+                  <><Loader2 size={15} className="animate-spin" /> Creating…</>
+                ) : (
+                  <><span>Create Room</span><ArrowRight size={15} /></>
+                )}
+              </button>
+            </form>
+          </div>
 
-        {/* Join Room */}
-        <div className="glass p-6">
-          <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            <span>🔗</span> Join by Link or ID
-          </h2>
-          <form onSubmit={handleJoin} className="space-y-3">
-            <input
-              id="join-room-input"
-              type="text"
-              placeholder="Paste room link or ID..."
-              value={joinId}
-              onChange={(e) => setJoinId(e.target.value)}
-              className="w-full px-4 py-3 text-sm"
-              style={{ borderRadius: '0.625rem' }}
-            />
-            <button
-              id="join-room-btn"
-              type="submit"
-              className="btn btn-ghost w-full"
-              disabled={!joinId.trim()}
-            >
-              Join Room →
-            </button>
-          </form>
-        </div>
+          {/* Divider */}
+          <div className="divider text-xs font-medium" style={{ color: '#3a3a42' }}>
+            or join an existing room
+          </div>
 
-        {/* Demo link */}
-        <p className="text-center text-slate-600 text-xs">
-          Want to see a demo?{' '}
-          <a href="/room/demo?demo=1" className="text-indigo-400 hover:text-indigo-300 underline">
-            Open the demo room
-          </a>
-        </p>
+          {/* Join Room */}
+          <div className="glass p-6">
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+                   style={{ background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                <Users size={15} style={{ color: '#c4b5fd' }} />
+              </div>
+              <h2 className="font-display font-bold text-base" style={{ color: '#e8e8ec' }}>
+                Join by Link or ID
+              </h2>
+            </div>
+            <form onSubmit={handleJoin} className="space-y-3">
+              <input
+                id="join-room-input"
+                type="text"
+                placeholder="Paste room link or ID…"
+                value={joinId}
+                onChange={(e) => setJoinId(e.target.value)}
+                className="w-full px-4 py-3 text-sm"
+              />
+              <button id="join-room-btn" type="submit"
+                      className="btn btn-secondary w-full"
+                      disabled={!joinId.trim()}>
+                Join Room
+                <ArrowRight size={15} />
+              </button>
+            </form>
+          </div>
+
+          {/* Demo link */}
+          <p className="text-center text-xs" style={{ color: '#4a4a54' }}>
+            No account needed.{' '}
+            <a href="/room/demo?demo=1"
+               className="underline transition-colors"
+               style={{ color: '#6a6a76' }}
+               onMouseEnter={e => (e.currentTarget.style.color = '#c8c8d0')}
+               onMouseLeave={e => (e.currentTarget.style.color = '#6a6a76')}>
+              Try the demo room
+            </a>
+          </p>
+        </div>
       </div>
 
       {/* Footer */}
-      <p className="mt-12 text-slate-700 text-xs">
-        Built for group trips in India 🇮🇳
-      </p>
+      <footer className="relative z-10 text-center py-5">
+        <p className="text-xs flex items-center justify-center gap-1.5" style={{ color: '#3a3a42' }}>
+          <Check size={11} style={{ color: '#4a4a54' }} />
+          Built for group trips
+        </p>
+      </footer>
     </main>
   );
 }

@@ -17,11 +17,11 @@ interface RoutePolylineProps {
 export default function RoutePolyline({ 
   encodedPolyline, 
   pathCoordinates,
-  strokeColor = '#6366f1',
+  strokeColor = '#3b82f6',
   strokeOpacity = 0.9,
   strokeWeight = 5,
-  arrowFillColor = '#38bdf8',
-  arrowStrokeColor = '#312e81',
+  arrowFillColor = '#93c5fd',
+  arrowStrokeColor = '#1e3a8a',
   zIndex = 1,
 }: RoutePolylineProps) {
   const map = useMap();
