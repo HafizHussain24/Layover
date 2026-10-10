@@ -1,7 +1,7 @@
 /// <reference types="google.maps" />
 import { useState, useRef } from 'react';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
-import { getCategoryFromPrimaryType, CATEGORY_COLORS, type PlaceCategory } from '../lib/categories';
+import { resolveCategory, CATEGORY_COLORS, type PlaceCategory } from '../lib/categories';
 
 export interface PlacePreview {
   place_id: string;
@@ -53,7 +53,7 @@ export default function SearchBar({ onAddPlace, adding }: SearchBarProps) {
       // Use the new Place class
       const place = new placesLib.Place({ id: suggestion.placePrediction.placeId });
       await place.fetchFields({ 
-        fields: ['id', 'displayName', 'formattedAddress', 'location', 'primaryType', 'rating', 'userRatingCount'] 
+        fields: ['id', 'displayName', 'formattedAddress', 'location', 'primaryType', 'types', 'rating', 'userRatingCount'] 
       });
       
       setSelected({
@@ -62,7 +62,7 @@ export default function SearchBar({ onAddPlace, adding }: SearchBarProps) {
         address: place.formattedAddress ?? undefined,
         lat: place.location?.lat() ?? 0,
         lng: place.location?.lng() ?? 0,
-        category: getCategoryFromPrimaryType(place.primaryType ?? undefined),
+        category: resolveCategory(place.primaryType, place.types, place.displayName),
         rating: place.rating ?? undefined,
         review_count: place.userRatingCount ?? undefined
       });

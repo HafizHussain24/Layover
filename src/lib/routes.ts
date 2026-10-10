@@ -26,14 +26,17 @@ export async function computeRoutes(request: ComputeRoutesRequest): Promise<Comp
   if (!apiKey) throw new Error('Maps API key is missing');
 
   // Convert to proper REST body for Routes API
-  const body = {
+  const body: any = {
     origin: { placeId: request.origin.placeId },
     destination: { placeId: request.destination.placeId },
     intermediates: request.intermediates?.map(i => ({ placeId: i.placeId })) ?? [],
     travelMode: request.travelMode,
-    routingPreference: request.travelMode === 'DRIVE' ? 'TRAFFIC_AWARE' : 'UNSPECIFIED',
     optimizeWaypointOrder: request.optimizeWaypointOrder ?? false,
   };
+
+  if (request.travelMode === 'DRIVE') {
+    body.routingPreference = 'TRAFFIC_AWARE';
+  }
 
   const response = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
     method: 'POST',

@@ -56,6 +56,13 @@ export function useBucket(roomId: string | undefined) {
       )
       .on(
         'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'bucket_locations', filter: `room_id=eq.${roomId}` },
+        (payload) => {
+          setItems((prev) => prev.map((i) => (i.id === (payload.new as BucketLocation).id ? (payload.new as BucketLocation) : i)));
+        }
+      )
+      .on(
+        'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'bucket_locations', filter: `room_id=eq.${roomId}` },
         (payload) => {
           setItems((prev) => prev.filter((i) => i.id !== (payload.old as { id: string }).id));
@@ -75,5 +82,10 @@ export function useBucket(roomId: string | undefined) {
     // realtime subscription will update the list
   };
 
-  return { items, loading, removeItem };
+  const updateCategory = async (id: string, category: string) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, category } : i)));
+    await supabase.from('bucket_locations').update({ category }).eq('id', id);
+  };
+
+  return { items, loading, removeItem, updateCategory };
 }

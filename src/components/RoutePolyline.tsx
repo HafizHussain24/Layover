@@ -3,16 +3,55 @@ import { useEffect, useState } from 'react';
 import { useMap } from '@vis.gl/react-google-maps';
 import { decodePolyline } from '../lib/polyline';
 
-export default function RoutePolyline({ encodedPolyline }: { encodedPolyline: string }) {
+interface RoutePolylineProps {
+  encodedPolyline?: string | null;
+  pathCoordinates?: google.maps.LatLngLiteral[] | null;
+  strokeColor?: string;
+  strokeOpacity?: number;
+  strokeWeight?: number;
+  arrowFillColor?: string;
+  arrowStrokeColor?: string;
+  zIndex?: number;
+}
+
+export default function RoutePolyline({ 
+  encodedPolyline, 
+  pathCoordinates,
+  strokeColor = '#6366f1',
+  strokeOpacity = 0.9,
+  strokeWeight = 5,
+  arrowFillColor = '#38bdf8',
+  arrowStrokeColor = '#312e81',
+  zIndex = 1,
+}: RoutePolylineProps) {
   const map = useMap();
   const [polyline, setPolyline] = useState<google.maps.Polyline | null>(null);
 
   useEffect(() => {
     if (!map) return;
+
+    // Arrow symbol pointing in direction of travel
+    const arrowSymbol: google.maps.Symbol = {
+      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      strokeColor: arrowStrokeColor,
+      strokeWeight: 1,
+      fillColor: arrowFillColor,
+      fillOpacity: 1,
+      scale: 3,
+    };
+
     const p = new google.maps.Polyline({
-      strokeColor: '#3b82f6', // indigo/blue
-      strokeOpacity: 0.8,
-      strokeWeight: 5,
+      strokeColor,
+      strokeOpacity,
+      strokeWeight,
+      zIndex,
+      icons: [
+        {
+          icon: arrowSymbol,
+          offset: '25px',
+          repeat: '70px',
+        },
+      ],
       map
     });
     setPolyline(p);
@@ -22,11 +61,46 @@ export default function RoutePolyline({ encodedPolyline }: { encodedPolyline: st
     };
   }, [map]);
 
+  // Synchronize options when styling props change
   useEffect(() => {
-    if (!polyline || !encodedPolyline) return;
-    const path = decodePolyline(encodedPolyline);
-    polyline.setPath(path);
-  }, [polyline, encodedPolyline]);
+    if (!polyline) return;
+    const arrowSymbol: google.maps.Symbol = {
+      path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+      strokeColor: arrowStrokeColor,
+      strokeWeight: 1,
+      fillColor: arrowFillColor,
+      fillOpacity: 1,
+      scale: 3,
+    };
+
+    polyline.setOptions({
+      strokeColor,
+      strokeOpacity,
+      strokeWeight,
+      zIndex,
+      icons: [
+        {
+          icon: arrowSymbol,
+          offset: '25px',
+          repeat: '70px',
+        },
+      ],
+    });
+  }, [polyline, strokeColor, strokeOpacity, strokeWeight, arrowFillColor, arrowStrokeColor, zIndex]);
+
+  // Synchronize path coordinates
+  useEffect(() => {
+    if (!polyline) return;
+    if (encodedPolyline && encodedPolyline.trim().length > 0) {
+      const path = decodePolyline(encodedPolyline);
+      polyline.setPath(path);
+    } else if (pathCoordinates && pathCoordinates.length > 0) {
+      polyline.setPath(pathCoordinates);
+    } else {
+      polyline.setPath([]);
+    }
+  }, [polyline, encodedPolyline, pathCoordinates]);
 
   return null;
 }
+

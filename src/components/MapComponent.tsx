@@ -4,7 +4,15 @@ import { useEffect } from 'react';
 import type { BucketLocation } from '../lib/types';
 import PlaceMarker from './PlaceMarker';
 
-export default function MapComponent({ items, children }: { items: BucketLocation[], children?: React.ReactNode }) {
+export default function MapComponent({ 
+  items, 
+  sequenceMap, 
+  children 
+}: { 
+  items: BucketLocation[]; 
+  sequenceMap?: Record<string, number>; 
+  children?: React.ReactNode; 
+}) {
   const map = useMap();
   const mapId = import.meta.env.VITE_GOOGLE_MAP_ID;
 
@@ -12,7 +20,7 @@ export default function MapComponent({ items, children }: { items: BucketLocatio
     if (!map || items.length === 0) return;
     const bounds = new google.maps.LatLngBounds();
     items.forEach((item) => bounds.extend({ lat: item.lat, lng: item.lng }));
-    map.fitBounds(bounds, { top: 50, bottom: 50, left: 50, right: 50 });
+    map.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
   }, [map, items]);
 
   return (
@@ -23,9 +31,10 @@ export default function MapComponent({ items, children }: { items: BucketLocatio
       disableDefaultUI={true}
       className="w-full h-full"
     >
-      {items.map((item) => (
-        <PlaceMarker key={item.id} item={item} />
-      ))}
+      {items.map((item) => {
+        const seq = sequenceMap ? (sequenceMap[item.id] ?? sequenceMap[item.place_id]) : undefined;
+        return <PlaceMarker key={item.id} item={item} sequenceNumber={seq} />;
+      })}
       {children}
     </Map>
   );
