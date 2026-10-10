@@ -1,5 +1,5 @@
 /**
- * Maps Google Places API types to WanderRoom display categories.
+ * Maps Google Places API types to WayMark display categories.
  */
 
 export type PlaceCategory =

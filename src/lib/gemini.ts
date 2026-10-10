@@ -132,7 +132,7 @@ export async function askGeminiTravelAssistant(
     ? `Do NOT suggest these places as they are already in the group's bucket list: ${existingPlaces.join(', ')}.`
     : '';
 
-  const systemPrompt = `You are WanderAI, an expert travel scout and local insider.
+  const systemPrompt = `You are WayMark Scout, an expert travel scout and local insider.
 ${locationContext}
 ${existingList}
 

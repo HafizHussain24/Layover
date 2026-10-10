@@ -12,7 +12,7 @@ export default function ShareButton({ roomName }: { roomName: string }) {
   };
 
   const handleWhatsApp = () => {
-    const text = `Join my trip planning room "${roomName}" on WanderRoom! ${url}`;
+    const text = `Join my trip planning room "${roomName}" on WayMark! ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 

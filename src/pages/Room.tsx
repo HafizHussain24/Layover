@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { createPortal } from 'react-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { supabase } from '../lib/supabase';
-import { useRoom, updateRoomDestination } from '../hooks/useRoom';
+import { useRoom, updateRoomDestination, deleteRoom } from '../hooks/useRoom';
 import { useBucket } from '../hooks/useBucket';
 import { usePresence } from '../hooks/usePresence';
 import { useRoutes } from '../hooks/useRoutes';
@@ -20,11 +21,12 @@ import ProposedRoutes from '../components/ProposedRoutes';
 import RoutePolyline from '../components/RoutePolyline';
 import InstagramImport from '../components/InstagramImport';
 import AIScout from '../components/AIScout';
+import UserMenu from '../components/UserMenu';
 import { getCategoryColor, getCategoryIcon, type PlaceCategory } from '../lib/categories';
 import CategoryIcon from '../components/CategoryIcon';
 import {
   Compass, X, Gem, BookMarked, Route, Sparkles,
-  Loader2, AlertTriangle, ArrowLeft,
+  Loader2, AlertTriangle, ArrowLeft, Trash2,
 } from 'lucide-react';
 
 // Phase 1: layout shell. Map, BucketList, etc. wired in Phase 2+.
@@ -47,13 +49,38 @@ export default function Room() {
   const [editingRoute, setEditingRoute] = useState<any | null>(null);
   const [builderPreview, setBuilderPreview] = useState<{ stops: any[]; route: any; routeName: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'bucket' | 'routes' | 'ai'>('bucket');
+  const navigate = useNavigate();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingRoom, setDeletingRoom] = useState(false);
+
+  const handleDeleteCurrentRoom = async () => {
+    if (!id) return;
+    setDeletingRoom(true);
+    try {
+      await deleteRoom(id);
+      navigate('/');
+    } catch (err) {
+      console.error('Delete room failed:', err);
+      // Clean local storage and navigate home
+      try {
+        const stored = localStorage.getItem('waymark_recent_trips');
+        if (stored) {
+          const updated = JSON.parse(stored).filter((t: any) => t.id !== id);
+          localStorage.setItem('waymark_recent_trips', JSON.stringify(updated));
+        }
+      } catch (_) {}
+      navigate('/');
+    } finally {
+      setDeletingRoom(false);
+    }
+  };
 
   // Resizable sidebar state
   const DEFAULT_SIDEBAR_WIDTH = 384;
   const MIN_SIDEBAR_WIDTH = 300;
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
     try {
-      const saved = localStorage.getItem('wanderroom_sidebar_width');
+      const saved = localStorage.getItem('waymark_sidebar_width') || localStorage.getItem('wanderroom_sidebar_width');
       if (saved) {
         const parsed = parseInt(saved, 10);
         if (!isNaN(parsed) && parsed >= MIN_SIDEBAR_WIDTH && parsed <= 900) {
@@ -90,7 +117,7 @@ export default function Room() {
     const handlePointerUp = () => {
       setIsResizingSidebar(false);
       try {
-        localStorage.setItem('wanderroom_sidebar_width', sidebarWidthRef.current.toString());
+        localStorage.setItem('waymark_sidebar_width', sidebarWidthRef.current.toString());
       } catch (_) {}
       // Notify map of container resize
       window.dispatchEvent(new Event('resize'));
@@ -157,6 +184,25 @@ export default function Room() {
     : null;
 
   const activeSearchDestination = explicitDestination || bucketCentroid;
+
+  // Track visited trip in localStorage for instant access in "My Trips"
+  useEffect(() => {
+    if (!id || !room?.name) return;
+    try {
+      const stored = localStorage.getItem('waymark_recent_trips');
+      const trips: Array<{ id: string; name: string; destination?: string; visitedAt: number }> = stored ? JSON.parse(stored) : [];
+      const updated = [
+        {
+          id,
+          name: room.name.replace(' [DEMO]', ''),
+          destination: room.destination_name || undefined,
+          visitedAt: Date.now(),
+        },
+        ...trips.filter((t) => t.id !== id),
+      ].slice(0, 15);
+      localStorage.setItem('waymark_recent_trips', JSON.stringify(updated));
+    } catch (_) {}
+  }, [id, room?.name, room?.destination_name]);
 
   const handleSetDestination = async (dest: { name: string; lat: number; lng: number } | null) => {
     if (!room) return;
@@ -324,6 +370,52 @@ export default function Room() {
         <DisplayNamePrompt onComplete={() => setShowPrompt(false)} />
       )}
 
+      {showDeleteModal && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deletingRoom) setShowDeleteModal(false);
+          }}
+        >
+          <div className="glass max-w-sm w-full p-6 rounded-2xl border border-white/10 shadow-2xl space-y-4 my-auto">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-400 flex-shrink-0">
+                <Trash2 size={18} />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-sm text-neutral-100">Delete Trip</h3>
+                <p className="text-xs text-neutral-400">Permanently delete this room?</p>
+              </div>
+            </div>
+            <p className="text-xs text-neutral-300 leading-relaxed">
+              Are you sure you want to delete <span className="font-semibold text-white">"{roomName.replace(' [DEMO]', '')}"</span>? All places, routes, and votes will be permanently removed.
+            </p>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                disabled={deletingRoom}
+                className="btn btn-secondary text-xs !py-2 !px-3 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteCurrentRoom}
+                disabled={deletingRoom}
+                className="btn text-xs !py-2 !px-3 bg-red-500 hover:bg-red-600 text-white font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer"
+              >
+                {deletingRoom ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                <span>Delete Permanently</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* App shell */}
       <div className="flex flex-col h-screen overflow-hidden">
         {/* ── Top bar ── */}
@@ -345,19 +437,30 @@ export default function Room() {
               <Compass size={16} color="white" />
             </Link>
             <div>
-              <h1 className="font-display font-bold text-sm leading-tight" style={{ color: '#e8e8ec' }}>
-                {roomName.replace(' [DEMO]', '')}
-              </h1>
-              {isDemo && <span className="demo-badge">demo</span>}
+              <div className="flex items-center gap-2">
+                <h1 className="font-display font-bold text-sm leading-tight" style={{ color: '#e8e8ec' }}>
+                  {roomName.replace(' [DEMO]', '')}
+                </h1>
+                {isDemo && <span className="demo-badge">demo</span>}
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="p-1 rounded-md text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                  title="Delete this trip"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div id="presence-bar-slot" className="hidden sm:flex items-center">
               <PresenceBar users={presentUsers} />
             </div>
             <div id="share-btn-slot">
               <ShareButton roomName={roomName} />
             </div>
+            <UserMenu inRoom={true} />
           </div>
         </header>
 
@@ -499,7 +602,7 @@ export default function Room() {
             onDoubleClick={() => {
               setSidebarWidth(DEFAULT_SIDEBAR_WIDTH);
               try {
-                localStorage.setItem('wanderroom_sidebar_width', DEFAULT_SIDEBAR_WIDTH.toString());
+                localStorage.setItem('waymark_sidebar_width', DEFAULT_SIDEBAR_WIDTH.toString());
               } catch (_) {}
               window.dispatchEvent(new Event('resize'));
             }}

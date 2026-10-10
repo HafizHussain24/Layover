@@ -18,7 +18,7 @@ export function useBucket(roomId: string | undefined) {
       return;
     }
 
-    if (roomId === 'mock') {
+    if (roomId === 'mock' || roomId === 'demo') {
       setItems([
         { id: 'm1', room_id: 'mock', added_by: 'demo', place_id: 'ChIJV4qPZ9F5oDsRD6i2906n_hQ', name: 'Fort Kochi Beach', address: 'Fort Kochi, Kochi', category: 'nature', lat: 9.9658, lng: 76.2415, rating: 4.5, review_count: 500, is_mock_rating: false, created_at: new Date().toISOString() },
         { id: 'm2', room_id: 'mock', added_by: 'demo', place_id: 'ChIJ59mD0NJ5oDsRAE9pMhU0-3Q', name: 'Mattancherry Palace', address: 'Mattancherry, Kochi', category: 'culture', lat: 9.9582, lng: 76.2593, rating: 4.6, review_count: 850, is_mock_rating: false, created_at: new Date().toISOString() },

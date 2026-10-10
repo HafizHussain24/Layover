@@ -1,26 +1,95 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { createRoom } from '../hooks/useRoom';
+import { createRoom, deleteRoom } from '../hooks/useRoom';
+import { supabase } from '../lib/supabase';
 import { useMapsLibrary } from '@vis.gl/react-google-maps';
+import UserMenu from '../components/UserMenu';
 import {
   MapPin, Users, Globe, ArrowRight, Loader2,
-  X, Check, Compass, Zap, Route, Star,
+  X, Check, Compass, Zap, Route, Star, Clock, Trash2,
 } from 'lucide-react';
 
+interface SavedTrip {
+  id: string;
+  name: string;
+  destination?: string | null;
+  created_at?: string;
+  visitedAt?: number;
+}
+
 export default function Home() {
-  const { user, profile, loading: authLoading } = useAuth();
+  const { user, profile, isAnonymous, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [roomName, setRoomName] = useState('');
   const [joinId, setJoinId] = useState('');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Saved / recent trips
+  const [myTrips, setMyTrips] = useState<SavedTrip[]>([]);
+
   // Optional trip destination at room creation
   const placesLib = useMapsLibrary('places');
   const [destQuery, setDestQuery] = useState('');
   const [selectedDest, setSelectedDest] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [destSuggestions, setDestSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
+
+  // Load saved trips from localStorage and Supabase
+  useEffect(() => {
+    const loadTrips = async () => {
+      const tripsMap = new Map<string, SavedTrip>();
+
+      // 1. Load from localStorage (recent visits)
+      try {
+        const stored = localStorage.getItem('waymark_recent_trips') || localStorage.getItem('wanderroom_recent_trips');
+        if (stored) {
+          const parsed: SavedTrip[] = JSON.parse(stored);
+          parsed.forEach((t) => {
+            if (t.id && t.name) tripsMap.set(t.id, t);
+          });
+        }
+      } catch (_) {}
+
+      // 2. If user is authenticated, query their created rooms from Supabase
+      if (user && !isAnonymous) {
+        try {
+          const { data } = await supabase
+            .from('rooms')
+            .select('id, name, destination_name, created_at')
+            .eq('created_by', user.id)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+          if (data) {
+            data.forEach((r) => {
+              tripsMap.set(r.id, {
+                id: r.id,
+                name: r.name,
+                destination: r.destination_name,
+                created_at: r.created_at,
+              });
+            });
+          }
+        } catch (_) {}
+      }
+
+      setMyTrips(Array.from(tripsMap.values()));
+    };
+
+    loadTrips();
+  }, [user, isAnonymous]);
+
+  const handleDeleteTripFromHome = async (e: React.MouseEvent, tripId: string) => {
+    e.stopPropagation();
+    if (!window.confirm('Delete this trip? This will permanently remove it from your trips.')) return;
+    try {
+      await deleteRoom(tripId);
+      setMyTrips((prev) => prev.filter((t) => t.id !== tripId));
+    } catch (err) {
+      console.error('Delete error:', err);
+    }
+  };
 
   const handleDestInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -86,10 +155,27 @@ export default function Home() {
              style={{ background: 'radial-gradient(circle, #8b5cf6, transparent 70%)' }} />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 py-16">
+      {/* ── Top Header Navigation ────────────────────────────── */}
+      <header className="w-full flex items-center justify-between px-6 py-4 z-20 max-w-5xl mx-auto">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="flex items-center justify-center w-9 h-9 rounded-xl shadow-lg"
+            style={{
+              background: 'linear-gradient(135deg, #ff7a38, #f95d0f)',
+              boxShadow: '0 4px 16px rgba(249,93,15,0.3)',
+            }}
+          >
+            <Compass size={18} color="white" />
+          </div>
+          <span className="font-display font-bold text-lg text-neutral-100 tracking-tight">WayMark</span>
+        </div>
+        <UserMenu inRoom={false} />
+      </header>
+
+      <div className="relative z-10 flex flex-col items-center justify-center flex-1 px-4 py-8 md:py-12">
 
         {/* ── Logo + tagline ──────────────────────────────── */}
-        <div className="text-center mb-12 animate-in">
+        <div className="text-center mb-10 animate-in">
           {/* Logo mark */}
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-6 shadow-2xl"
                style={{ background: 'linear-gradient(135deg, #ff7a38, #f95d0f)', boxShadow: '0 8px 32px rgba(249,93,15,0.4)' }}>
@@ -105,7 +191,7 @@ export default function Home() {
           </div>
 
           <h1 className="font-display text-5xl sm:text-6xl font-extrabold mb-4 gradient-text tracking-tight">
-            WanderRoom
+            WayMark
           </h1>
           <p className="text-lg max-w-sm mx-auto leading-relaxed" style={{ color: '#6a6a76' }}>
             Drop places, build routes,{' '}
@@ -114,11 +200,11 @@ export default function Home() {
         </div>
 
         {/* ── Feature pills ──────────────────────────────── */}
-        <div className="flex items-center gap-3 mb-10 flex-wrap justify-center animate-in" style={{ animationDelay: '0.05s' }}>
+        <div className="flex items-center gap-3 mb-8 flex-wrap justify-center animate-in" style={{ animationDelay: '0.05s' }}>
           {[
             { icon: <Users size={12} />, label: 'Multiplayer' },
             { icon: <Route size={12} />, label: 'Route Builder' },
-            { icon: <Star size={12} />, label: 'Hidden Gems' },
+            { icon: <Star size={12} />, label: 'AI Travel Scout' },
             { icon: <Globe size={12} />, label: 'Share via WhatsApp' },
           ].map(f => (
             <span key={f.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium"
@@ -271,6 +357,66 @@ export default function Home() {
             </form>
           </div>
 
+          {/* ── My Trips Section (if any trips recorded) ───────────── */}
+          {myTrips.length > 0 && (
+            <div className="glass p-5 rounded-2xl border border-white/10 space-y-3 animate-in">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div
+                    className="w-6 h-6 rounded-lg flex items-center justify-center"
+                    style={{ background: 'rgba(249,93,15,0.15)' }}
+                  >
+                    <Clock size={13} style={{ color: '#ff9a5c' }} />
+                  </div>
+                  <h3 className="font-display font-bold text-sm text-neutral-100">Your Trips</h3>
+                </div>
+                <span className="text-[11px] text-neutral-400">{myTrips.length} saved</span>
+              </div>
+
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                {myTrips.map((trip) => (
+                  <div
+                    key={trip.id}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/5 hover:border-brand-500/30 transition-all text-left group"
+                  >
+                    <div
+                      className="min-w-0 flex-1 pr-3 cursor-pointer"
+                      onClick={() => navigate(`/room/${trip.id}`)}
+                    >
+                      <p className="font-semibold text-xs text-neutral-200 group-hover:text-white truncate">
+                        {trip.name}
+                      </p>
+                      {trip.destination && (
+                        <p className="text-[11px] text-neutral-400 flex items-center gap-1 mt-0.5 truncate">
+                          <MapPin size={10} style={{ color: '#f95d0f' }} />
+                          {trip.destination}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteTripFromHome(e, trip.id)}
+                        className="p-1.5 rounded-lg text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                        title="Delete trip"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/room/${trip.id}`)}
+                        className="p-1.5 rounded-lg text-neutral-400 group-hover:text-brand-400 group-hover:translate-x-0.5 transition-all cursor-pointer"
+                        title="Open trip"
+                      >
+                        <ArrowRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Demo link */}
           <p className="text-center text-xs" style={{ color: '#4a4a54' }}>
             No account needed.{' '}
@@ -289,7 +435,7 @@ export default function Home() {
       <footer className="relative z-10 text-center py-5">
         <p className="text-xs flex items-center justify-center gap-1.5" style={{ color: '#3a3a42' }}>
           <Check size={11} style={{ color: '#4a4a54' }} />
-          Built for group trips
+          Built for group trips • WayMark
         </p>
       </footer>
     </main>

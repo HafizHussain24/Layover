@@ -39,7 +39,7 @@ export default function AIScout({
   onAddPlace,
   addingPlace,
 }: AIScoutProps) {
-  const storageKey = `wanderroom_ai_scout_${roomId || 'default'}`;
+  const storageKey = `waymark_ai_scout_${roomId || 'default'}`;
 
   // Persistent query & suggestions from sessionStorage
   const [query, setQuery] = useState<string>(() => {
@@ -236,7 +236,7 @@ export default function AIScout({
             <Sparkles size={13} color="white" />
           </div>
           <h3 className="font-display font-bold text-sm" style={{ color: '#e8e8ec' }}>
-            WanderAI Scout
+            WayMark Scout
           </h3>
           {destinationLabel && (
             <span className="badge ml-auto"

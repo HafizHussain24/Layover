@@ -23,6 +23,20 @@ export function useRoom(roomId: string | undefined) {
       return;
     }
 
+    if (roomId === 'demo' || roomId === 'mock') {
+      setRoom({
+        id: roomId,
+        name: 'Kochi Weekend [DEMO]',
+        created_by: null,
+        created_at: new Date().toISOString(),
+        destination_name: 'Kochi, Kerala',
+        destination_lat: 9.9312,
+        destination_lng: 76.2673,
+      });
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     supabase
       .from('rooms')
@@ -118,3 +132,32 @@ export async function updateRoomDestination(
     throw new Error(error.message);
   }
 }
+
+/** Deletes a room from Supabase and clears from local recent storage */
+export async function deleteRoom(roomId: string): Promise<void> {
+  // Always clean from local storage
+  try {
+    const stored = localStorage.getItem('waymark_recent_trips') || localStorage.getItem('wanderroom_recent_trips');
+    if (stored) {
+      const filtered = JSON.parse(stored).filter((t: any) => t.id !== roomId);
+      localStorage.setItem('waymark_recent_trips', JSON.stringify(filtered));
+    }
+  } catch (_) {}
+
+  // If mock/demo room, no database row to delete
+  if (roomId === 'demo' || roomId === 'mock') {
+    return;
+  }
+
+  // Delete from Supabase rooms table (cascades to bucket_locations, proposed_routes, route_votes)
+  const { error } = await supabase
+    .from('rooms')
+    .delete()
+    .eq('id', roomId);
+
+  if (error) {
+    console.warn('Failed to delete room row in Supabase:', error.message);
+    throw new Error(error.message);
+  }
+}
+

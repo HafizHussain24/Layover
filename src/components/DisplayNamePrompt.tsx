@@ -100,7 +100,7 @@ export default function DisplayNamePrompt({ onComplete }: DisplayNamePromptProps
               <p className="font-semibold text-sm" style={{ color: '#e8e8ec' }}>
                 {name || 'Your Name'}
               </p>
-              <p className="text-xs" style={{ color: '#4a4a54' }}>WanderRoom traveller</p>
+              <p className="text-xs" style={{ color: '#4a4a54' }}>WayMark traveller</p>
             </div>
           </div>
 
