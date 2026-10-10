@@ -2,9 +2,14 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Room } from '../lib/types';
 
+export interface DestinationData {
+  name: string | null;
+  lat: number | null;
+  lng: number | null;
+}
+
 /**
- * Fetches room data by id. Returns null while loading and undefined if not found.
- * Phase 1: basic fetch. Phase 3: realtime will be wired here.
+ * Fetches room data by id and subscribes to realtime updates (e.g., destination changes).
  */
 export function useRoom(roomId: string | undefined) {
   const [room, setRoom] = useState<Room | null | undefined>(undefined);
@@ -29,19 +34,87 @@ export function useRoom(roomId: string | undefined) {
         else setRoom(data as Room);
         setLoading(false);
       });
+
+    // Realtime subscription for room updates (e.g., trip destination changed by a friend)
+    const channel = supabase
+      .channel(`room-meta-${roomId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
+        (payload) => {
+          setRoom(payload.new as Room);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [roomId]);
 
-  return { room, loading, error };
+  return { room, setRoom, loading, error };
 }
 
-/** Creates a new room and returns its id */
-export async function createRoom(name: string, userId: string): Promise<string> {
-  const { data, error } = await supabase
-    .from('rooms')
-    .insert({ name, created_by: userId })
-    .select('id')
-    .single();
+/** Creates a new room with optional initial destination and returns its id */
+export async function createRoom(
+  name: string, 
+  userId: string,
+  destination?: { name?: string; lat?: number; lng?: number }
+): Promise<string> {
+  const payload: Record<string, any> = {
+    name,
+    created_by: userId,
+  };
 
-  if (error) throw new Error(error.message);
-  return data.id as string;
+  if (destination && destination.name && destination.lat && destination.lng) {
+    payload.destination_name = destination.name;
+    payload.destination_lat = destination.lat;
+    payload.destination_lng = destination.lng;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('rooms')
+      .insert(payload)
+      .select('id')
+      .single();
+
+    if (error) {
+      // If error is due to destination columns not existing yet in Supabase, retry without them
+      if (error.message.includes('destination') || error.message.includes('column')) {
+        console.warn('Destination columns missing in rooms table, creating room without initial destination fields. Run migration 002 to persist destinations.');
+        const fallback = await supabase
+          .from('rooms')
+          .insert({ name, created_by: userId })
+          .select('id')
+          .single();
+        if (fallback.error) throw new Error(fallback.error.message);
+        return fallback.data.id as string;
+      }
+      throw new Error(error.message);
+    }
+    return data.id as string;
+  } catch (err: any) {
+    throw new Error(err.message || 'Failed to create room');
+  }
+}
+
+/** Updates room destination in Supabase */
+export async function updateRoomDestination(
+  roomId: string,
+  destination: DestinationData
+): Promise<void> {
+  const { error } = await supabase
+    .from('rooms')
+    .update({
+      destination_name: destination.name,
+      destination_lat: destination.lat,
+      destination_lng: destination.lng,
+    })
+    .eq('id', roomId);
+
+  if (error) {
+    console.warn('Failed to update destination in Supabase (ensure migration 002 is executed):', error.message);
+    throw new Error(error.message);
+  }
 }

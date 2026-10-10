@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import { supabase } from '../lib/supabase';
-import { useRoom } from '../hooks/useRoom';
+import { useRoom, updateRoomDestination } from '../hooks/useRoom';
 import { useBucket } from '../hooks/useBucket';
 import { usePresence } from '../hooks/usePresence';
 import { useRoutes } from '../hooks/useRoutes';
@@ -11,6 +11,7 @@ import { useVotes } from '../hooks/useVotes';
 import DisplayNamePrompt from '../components/DisplayNamePrompt';
 import MapComponent from '../components/MapComponent';
 import SearchBar, { type PlacePreview } from '../components/SearchBar';
+import DestinationBar from '../components/DestinationBar';
 import BucketList from '../components/BucketList';
 import PresenceBar from '../components/PresenceBar';
 import ShareButton from '../components/ShareButton';
@@ -131,6 +132,38 @@ export default function Room() {
     }
     return true;
   });
+
+  // Group 6: Destination Resolution & Smart Search Bias
+  const explicitDestination = room?.destination_name && room.destination_lat && room.destination_lng
+    ? {
+        name: room.destination_name,
+        lat: room.destination_lat,
+        lng: room.destination_lng,
+      }
+    : null;
+
+  const bucketCentroid = bucketItems.length > 0
+    ? {
+        name: `${bucketItems[0].name} area`,
+        lat: bucketItems.reduce((acc, p) => acc + p.lat, 0) / bucketItems.length,
+        lng: bucketItems.reduce((acc, p) => acc + p.lng, 0) / bucketItems.length,
+      }
+    : null;
+
+  const activeSearchDestination = explicitDestination || bucketCentroid;
+
+  const handleSetDestination = async (dest: { name: string; lat: number; lng: number } | null) => {
+    if (!room) return;
+    try {
+      await updateRoomDestination(room.id, {
+        name: dest ? dest.name : null,
+        lat: dest ? dest.lat : null,
+        lng: dest ? dest.lng : null,
+      });
+    } catch (err) {
+      console.error('Failed to update destination:', err);
+    }
+  };
 
   // Once auth loads, show prompt if no profile yet
   useEffect(() => {
@@ -366,7 +399,7 @@ export default function Room() {
               </div>
             )}
 
-            <MapComponent items={mapItems} sequenceMap={sequenceMap}>
+            <MapComponent items={mapItems} sequenceMap={sequenceMap} destination={activeSearchDestination}>
               {/* When editing an existing route with live changes, render BOTH: original in Blue, live changes in Emerald Green */}
               {isEditing && isRouteModified ? (
                 <>
@@ -505,7 +538,17 @@ export default function Room() {
               <>
                 {/* SearchBar slot (Phase 2) */}
                 <div id="search-bar-slot" className="p-4 border-b border-slate-800/60 relative z-10 flex flex-col gap-3">
-                  <SearchBar onAddPlace={handleAddPlace} adding={addingPlace} />
+                  <DestinationBar
+                    currentDestination={explicitDestination}
+                    bucketCount={bucketItems.length}
+                    hasBucketItems={bucketItems.length > 0}
+                    onSetDestination={handleSetDestination}
+                  />
+                  <SearchBar 
+                    onAddPlace={handleAddPlace} 
+                    adding={addingPlace} 
+                    destination={activeSearchDestination}
+                  />
                   
                   {/* Hidden Gem Toggle */}
                   <label className="flex items-center justify-between cursor-pointer group">

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
 import { createRoom } from '../hooks/useRoom';
+import { useMapsLibrary } from '@vis.gl/react-google-maps';
 
 export default function Home() {
   const { user, profile, loading: authLoading } = useAuth();
@@ -11,13 +12,61 @@ export default function Home() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Optional trip destination at room creation
+  const placesLib = useMapsLibrary('places');
+  const [destQuery, setDestQuery] = useState('');
+  const [selectedDest, setSelectedDest] = useState<{ name: string; lat: number; lng: number } | null>(null);
+  const [destSuggestions, setDestSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
+
+  const handleDestInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setDestQuery(val);
+    if (!placesLib || !val.trim()) {
+      setDestSuggestions([]);
+      return;
+    }
+
+    try {
+      const res = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+        input: val,
+        includedPrimaryTypes: ['locality', 'administrative_area_level_1', 'administrative_area_level_2', 'country', 'postal_town'],
+      });
+      setDestSuggestions(res.suggestions || []);
+    } catch (_) {
+      try {
+        const fallback = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({ input: val });
+        setDestSuggestions(fallback.suggestions || []);
+      } catch {
+        setDestSuggestions([]);
+      }
+    }
+  };
+
+  const handleSelectDest = async (suggestion: google.maps.places.AutocompleteSuggestion) => {
+    if (!placesLib || !suggestion.placePrediction) return;
+    try {
+      const place = new placesLib.Place({ id: suggestion.placePrediction.placeId });
+      await place.fetchFields({ fields: ['displayName', 'formattedAddress', 'location'] });
+      const name = place.displayName || suggestion.placePrediction.text.text;
+      const lat = place.location?.lat();
+      const lng = place.location?.lng();
+      if (typeof lat === 'number' && typeof lng === 'number') {
+        setSelectedDest({ name, lat, lng });
+      }
+      setDestQuery('');
+      setDestSuggestions([]);
+    } catch (err) {
+      console.error('Failed to select destination:', err);
+    }
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!roomName.trim() || !user) return;
     setCreating(true);
     setError(null);
     try {
-      const id = await createRoom(roomName.trim(), user.id);
+      const id = await createRoom(roomName.trim(), user.id, selectedDest || undefined);
       navigate(`/room/${id}`);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create room');
@@ -70,6 +119,52 @@ export default function Home() {
               maxLength={60}
               disabled={creating || !user}
             />
+
+            {/* Trip Destination (Optional) */}
+            <div className="relative">
+              {selectedDest ? (
+                <div className="flex items-center justify-between px-3.5 py-2.5 bg-indigo-950/60 border border-indigo-500/40 rounded-[0.625rem] text-xs text-white">
+                  <div className="flex items-center gap-2 truncate">
+                    <span className="text-sm">📍</span>
+                    <span className="font-semibold truncate">{selectedDest.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedDest(null)}
+                    className="p-1 text-slate-400 hover:text-white transition-colors"
+                    title="Remove destination"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="📍 Destination (e.g. Kozhikode, Tokyo) - optional"
+                    value={destQuery}
+                    onChange={handleDestInputChange}
+                    className="w-full px-4 py-2.5 text-xs bg-slate-900/60 border border-slate-700/60 rounded-[0.625rem] text-white placeholder-slate-500 outline-none focus:border-indigo-500/60 transition-colors"
+                    disabled={creating || !user}
+                  />
+                  {destSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-700 shadow-2xl overflow-hidden z-30 max-h-48 overflow-y-auto">
+                      {destSuggestions.map((s, i) => (
+                        <button
+                          key={s.placePrediction?.placeId || i}
+                          type="button"
+                          onClick={() => handleSelectDest(s)}
+                          className="w-full text-left px-3 py-2.5 hover:bg-indigo-600/20 border-b border-slate-800 last:border-b-0 text-xs flex items-center gap-2.5 text-white transition-colors group"
+                        >
+                          <span className="opacity-60 group-hover:opacity-100">🏙️</span>
+                          <span className="truncate">{s.placePrediction?.text.text}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
             {authLoading && (
               <p className="text-xs text-indigo-300 flex items-center gap-1">
                 <span className="spinner w-3 h-3 border-2 border-indigo-300 border-t-transparent" /> Connecting to server...

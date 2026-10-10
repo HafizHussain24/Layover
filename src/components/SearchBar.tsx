@@ -17,9 +17,10 @@ export interface PlacePreview {
 interface SearchBarProps {
   onAddPlace: (place: PlacePreview) => void;
   adding: boolean;
+  destination?: { lat: number; lng: number; name?: string | null } | null;
 }
 
-export default function SearchBar({ onAddPlace, adding }: SearchBarProps) {
+export default function SearchBar({ onAddPlace, adding, destination }: SearchBarProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const placesLib = useMapsLibrary('places');
   const [selected, setSelected] = useState<PlacePreview | null>(null);
@@ -36,9 +37,19 @@ export default function SearchBar({ onAddPlace, adding }: SearchBarProps) {
     }
 
     try {
-      const response = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+      const request: any = {
         input: val,
-      });
+      };
+
+      // Apply locationBias to destination city if specified
+      if (destination && destination.lat && destination.lng) {
+        request.locationBias = {
+          center: { lat: destination.lat, lng: destination.lng },
+          radius: 50000, // 50km radius boost
+        };
+      }
+
+      const response = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
       setSuggestions(response.suggestions || []);
     } catch (err) {
       console.error('Failed to fetch suggestions:', err);
@@ -95,7 +106,11 @@ export default function SearchBar({ onAddPlace, adding }: SearchBarProps) {
           type="text"
           value={inputValue}
           onChange={handleInputChange}
-          placeholder="Search for places..."
+          placeholder={
+            destination?.name
+              ? `Search places in ${destination.name.split(',')[0]}...`
+              : "Search for places..."
+          }
           className="w-full px-3 py-3 text-sm bg-transparent text-white outline-none"
           disabled={adding}
         />

@@ -432,3 +432,34 @@ _(ideas out of scope, to be added here rather than in code)_
 - Verified: Clean build (0 errors).
 - Blockers / waiting on user: None.
 - Next: Ask user to test route naming and renaming in browser and await next feature request.
+
+### Entry 25 | Feature | Trip Destination Setting & Location-Biased Search (Hybrid Option C)
+- Time: Post-Phase 5
+- User request: "Currently when searching in the search bar, locations from the entire world are shown so its hard to find the locations you want based on the autofill, suggestion. So instead add a way to specify a location for where the trip is being planned, Maybe when creating the room or after creating it near the search bar so that whatever is being searched is relevant to that particular location." -> User selected Hybrid Option C.
+- Done:
+  - **Database Migration (`supabase/migrations/002_room_destination.sql`):**
+    - Created migration script adding `destination_name`, `destination_lat`, and `destination_lng` to the `rooms` table in Supabase.
+  - **Shared Types & Room Hook (`src/lib/types.ts` & `src/hooks/useRoom.ts`):**
+    - Extended `Room` interface with destination properties.
+    - Updated `createRoom` to accept optional initial destination with automatic fallback handling.
+    - Added `updateRoomDestination` to persist destination updates to Supabase.
+    - Added real-time Postgres `UPDATE` subscription on the `rooms` table so destination edits sync across all room participants in real time.
+  - **Trip Destination Bar (`src/components/DestinationBar.tsx`):**
+    - Built an interactive destination status card right above the search bar:
+      - **When Set:** Displays `📍 Trip Destination: [City Name]` with `Change` and `✕` clear buttons.
+      - **When Unset with Saved Places:** Displays `🎯 Auto-Focus Active: Biased to X saved places` using bucket list centroid.
+      - **When Empty:** Displays an inviting `+ Set City` prompt button.
+      - **Edit Mode:** Offers full Google Places autocomplete restricted to localities, cities, and regions.
+  - **Location-Biased Search (`src/components/SearchBar.tsx`):**
+    - Updated `fetchAutocompleteSuggestions` to pass `locationBias` ({ center: { lat, lng }, radius: 50000 }) when a destination is set or derived from existing bucket places.
+    - Added a smart contextual placeholder (e.g. `Search places in Tokyo...`).
+  - **Room Creation with Destination (`src/pages/Home.tsx`):**
+    - Added an optional destination input with Google Places city autocomplete into the "Create a Room" form.
+    - Lifted `<APIProvider>` to `App.tsx` root so Places API autocomplete functions on Home and Room routes.
+  - **Map Centering (`src/components/MapComponent.tsx`):**
+    - When bucket items are empty, the Google Map automatically centers and zooms (level 12) directly over the destination city.
+  - Verified clean TypeScript compilation and production build (`npm run build` completed with 0 errors).
+- Decisions: Adopted Hybrid Option C with 50km circular locationBias and automatic centroid fallback so search is always hyper-relevant even before an explicit destination is specified.
+- Verified: Clean build (0 errors).
+- Blockers / waiting on user: Run migration `002_room_destination.sql` in Supabase SQL Editor to persist destinations to PostgreSQL.
+- Next: Ask user to run migration 002 in Supabase and test destination-biased search.

@@ -11,6 +11,9 @@ export interface Room {
   name: string;
   created_by: string | null;
   created_at: string;
+  destination_name?: string | null;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
 }
 
 export interface BucketLocation {
