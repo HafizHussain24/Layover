@@ -6,12 +6,19 @@ import { supabase } from '../lib/supabase';
 import { useRoom } from '../hooks/useRoom';
 import { useBucket } from '../hooks/useBucket';
 import { usePresence } from '../hooks/usePresence';
+import { useRoutes } from '../hooks/useRoutes';
+import { useVotes } from '../hooks/useVotes';
 import DisplayNamePrompt from '../components/DisplayNamePrompt';
 import MapComponent from '../components/MapComponent';
 import SearchBar, { type PlacePreview } from '../components/SearchBar';
 import BucketList from '../components/BucketList';
 import PresenceBar from '../components/PresenceBar';
 import ShareButton from '../components/ShareButton';
+import RouteBuilder from '../components/RouteBuilder';
+import ProposedRoutes from '../components/ProposedRoutes';
+import RoutePolyline from '../components/RoutePolyline';
+import AutoSplit from '../components/AutoSplit';
+import InstagramImport from '../components/InstagramImport';
 
 // Phase 1: layout shell. Map, BucketList, etc. wired in Phase 2+.
 
@@ -21,9 +28,14 @@ export default function Room() {
   const { room, loading: roomLoading, error: roomError } = useRoom(id);
   const { items: bucketItems, loading: bucketLoading, removeItem } = useBucket(id);
   const presentUsers = usePresence(id, profile);
+  const { routes, loading: routesLoading } = useRoutes(id);
+  const votesHook = useVotes(id, user?.id);
+  
   const [showPrompt, setShowPrompt] = useState(false);
   const [addingPlace, setAddingPlace] = useState(false);
   const [showHiddenGems, setShowHiddenGems] = useState(false);
+  const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+  
   const isDemo = new URLSearchParams(window.location.search).get('demo') === '1';
   const mapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
@@ -63,7 +75,9 @@ export default function Room() {
     }
   };
 
-  if (authLoading || roomLoading || bucketLoading) {
+  const selectedRoute = selectedRouteId ? routes.find(r => r.id === selectedRouteId) : null;
+
+  if (authLoading || roomLoading || bucketLoading || routesLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -122,17 +136,21 @@ export default function Room() {
         </header>
 
         {/* Main content */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Map area — takes full screen on mobile, left side on desktop */}
-          <div id="map-slot" className="flex-1 relative bg-slate-900">
-            <MapComponent items={filteredBucket} />
+        <div className="flex flex-1 overflow-hidden flex-col md:flex-row">
+          {/* Map area — takes top half on mobile, left side on desktop */}
+          <div id="map-slot" className="flex-1 relative bg-slate-900 min-h-[40vh] md:min-h-0">
+            <MapComponent items={filteredBucket}>
+              {selectedRoute && (
+                <RoutePolyline encodedPolyline={selectedRoute.encoded_polyline ?? ''} />
+              )}
+            </MapComponent>
           </div>
 
-          {/* Side panel — desktop only; becomes bottom sheet on mobile (Phase 5) */}
+          {/* Side panel — bottom half scrollable on mobile, right side on desktop */}
           <aside
             id="side-panel"
-            className="hidden md:flex flex-col w-96 flex-shrink-0 overflow-y-auto"
-            style={{ background: 'var(--color-surface-1)', borderLeft: '1px solid rgba(99,102,241,0.12)' }}
+            className="flex flex-col flex-shrink-0 w-full md:w-96 h-[60vh] md:h-auto overflow-y-auto border-t md:border-t-0 md:border-l"
+            style={{ background: 'var(--color-surface-1)', borderColor: 'rgba(99,102,241,0.12)' }}
           >
             {/* SearchBar slot (Phase 2) */}
             <div id="search-bar-slot" className="p-4 border-b border-slate-800/60 relative z-10 flex flex-col gap-3">
@@ -154,22 +172,28 @@ export default function Room() {
             {/* BucketList slot (Phase 2) */}
             <div id="bucket-list-slot" className="flex-1 overflow-y-auto relative z-0">
               <BucketList items={filteredBucket} onRemove={removeItem} />
+              <ProposedRoutes 
+                routes={routes} 
+                votesHook={votesHook} 
+                onSelectRoute={(r) => setSelectedRouteId(r ? r.id : null)}
+                selectedRouteId={selectedRouteId}
+              />
+              <div className="px-4 pb-4">
+                <AutoSplit roomId={room?.id ?? ''} userId={user?.id} availablePlaces={bucketItems} />
+              </div>
             </div>
 
             {/* RouteBuilder slot (Phase 4) */}
-            <div id="route-builder-slot" className="border-t border-slate-800/60 p-4">
-              <p className="text-slate-700 text-xs text-center">Route builder — Phase 4</p>
+            <div id="route-builder-slot" className="border-t border-slate-800/60 p-4 shrink-0 bg-surface-1">
+              <RouteBuilder 
+                roomId={room?.id ?? ''}
+                userId={user?.id}
+                availablePlaces={bucketItems}
+              />
             </div>
+            
+            <InstagramImport />
           </aside>
-        </div>
-
-        {/* Mobile bottom sheet (Phase 5 enhancement) */}
-        <div id="mobile-sheet"
-             className="md:hidden flex-shrink-0 h-48 overflow-y-auto"
-             style={{ background: 'var(--color-surface-1)', borderTop: '1px solid rgba(99,102,241,0.15)' }}>
-          <p className="text-slate-600 text-xs text-center py-4">
-            Bucket list — mobile view loads in Phase 2
-          </p>
         </div>
       </div>
     </APIProvider>

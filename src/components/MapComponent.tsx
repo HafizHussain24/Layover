@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import type { BucketLocation } from '../lib/types';
 import PlaceMarker from './PlaceMarker';
 
-export default function MapComponent({ items }: { items: BucketLocation[] }) {
+export default function MapComponent({ items, children }: { items: BucketLocation[], children?: React.ReactNode }) {
   const map = useMap();
   const mapId = import.meta.env.VITE_GOOGLE_MAP_ID;
 
@@ -26,6 +26,7 @@ export default function MapComponent({ items }: { items: BucketLocation[] }) {
       {items.map((item) => (
         <PlaceMarker key={item.id} item={item} />
       ))}
+      {children}
     </Map>
   );
 }

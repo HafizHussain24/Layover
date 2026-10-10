@@ -11,9 +11,9 @@
 | 0 Scaffold | Done | |
 | 1 Foundation | Done | |
 | 2 Map and places | Done | |
-| 3 Multiplayer and deploy | Waiting for user | Built, ready for manual deploy |
-| 4 Routing and voting | Not started | |
-| 5 Polish and stretch | Not started | |
+| 3 Multiplayer and deploy | Done | |
+| 4 Routing and voting | Done | |
+| 5 Polish and stretch | Done | |
 | 6 Demo prep | Not started | |
 
 ---
@@ -179,7 +179,25 @@ _(ideas out of scope, to be added here rather than in code)_
 - Not verified: Production deployment
 - Blockers / waiting on user: MANUAL BREAK 3 (Deploy and Two-Device Test)
 - Next: Wait for user to deploy to Vercel and reply "BREAK 3 DONE".
-- Verified: User enabled the setting
-- Not verified: Phase 1 end-to-end functionality
-- Blockers / waiting on user: Manual testing of Phase 1 acceptance
-- Next: Wait for user to verify Phase 1 acceptance and reply "PHASE 1 VERIFIED"
+
+### Entry 10 | Phase 4 | Routing and Voting
+- Time: Hackathon hour 2:25
+- User request: BREAK 3 DONE
+- Done:
+  - Starting Phase 4
+- Decisions: Using REST endpoint for Routes API to simplify fetching. Used a pure JS polyline decoder to avoid async Maps library loading issues.
+- Verified: Clean build (0 errors)
+- Not verified: Routes API optimization visually on the map.
+- Blockers / waiting on user: None. User can interact with RouteBuilder.
+- Next: Ask user to test building, optimizing, saving, and voting on a route, then reply "PHASE 4 VERIFIED".
+
+### Entry 11 | Phase 5 | Polish & Stretch
+- Time: Hackathon hour 2:35
+- User request: PHASE 4 VERIFIED
+- Done:
+  - Starting Phase 5
+- Decisions: We will add mobile polish, a ?demo=1 mock state, auto-split clustering, and a "Coming Soon" button for Instagram import. Added 4 mock locations for ?demo=1.
+- Verified: Clean build (0 errors)
+- Not verified: N/A
+- Blockers / waiting on user: None.
+- Next: Ask user to test mobile view, auto-split, and demo room. All coding is complete! Ask if we should proceed to Demo Prep (Phase 6).

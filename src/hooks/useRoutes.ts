@@ -1,13 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { ProposedRoute } from '../lib/types';
 
-/**
- * Fetches and subscribes to proposed_routes for a room.
- */
 export function useRoutes(roomId: string | undefined) {
   const [routes, setRoutes] = useState<ProposedRoute[]>([]);
   const [loading, setLoading] = useState(true);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (!roomId) {
@@ -16,6 +14,7 @@ export function useRoutes(roomId: string | undefined) {
       return;
     }
 
+    // Initial fetch
     supabase
       .from('proposed_routes')
       .select('*')
@@ -26,6 +25,7 @@ export function useRoutes(roomId: string | undefined) {
         setLoading(false);
       });
 
+    // Realtime subscription
     const channel = supabase
       .channel(`routes:${roomId}`)
       .on(
@@ -33,7 +33,7 @@ export function useRoutes(roomId: string | undefined) {
         { event: 'INSERT', schema: 'public', table: 'proposed_routes', filter: `room_id=eq.${roomId}` },
         (payload) => {
           setRoutes((prev) => {
-            const exists = prev.some((r) => r.id === (payload.new as ProposedRoute).id);
+            const exists = prev.some((i) => i.id === (payload.new as ProposedRoute).id);
             if (exists) return prev;
             return [...prev, payload.new as ProposedRoute];
           });
@@ -43,10 +43,12 @@ export function useRoutes(roomId: string | undefined) {
         'postgres_changes',
         { event: 'DELETE', schema: 'public', table: 'proposed_routes', filter: `room_id=eq.${roomId}` },
         (payload) => {
-          setRoutes((prev) => prev.filter((r) => r.id !== (payload.old as { id: string }).id));
+          setRoutes((prev) => prev.filter((i) => i.id !== (payload.old as { id: string }).id));
         }
       )
       .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
       channel.unsubscribe();
