@@ -6,7 +6,7 @@ import { SortableList } from './SortableList';
 import { getCategoryColor, getCategoryIcon, type PlaceCategory } from '../lib/categories';
 import {
   Car, Footprints, Wand2, ChevronRight, ChevronDown, GripVertical,
-  X, Pencil, Check, Loader2, Route, Clock, Ruler, ArrowLeft,
+  X, Pencil, Check, Loader2, Route, Clock, Ruler, ArrowLeft, Search,
 } from 'lucide-react';
 import CategoryIcon from './CategoryIcon';
 
@@ -50,6 +50,7 @@ export default function RouteBuilder({
   const [routeName, setRouteName] = useState<string>('');
   const [isSavingName, setIsSavingName] = useState(false);
   const [builderCategoryFilter, setBuilderCategoryFilter] = useState<PlaceCategory | 'ALL'>('ALL');
+  const [placeSearchQuery, setPlaceSearchQuery] = useState<string>('');
   const [isModeDropdownOpen, setIsModeDropdownOpen] = useState(false);
   const modeDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -151,14 +152,19 @@ export default function RouteBuilder({
     }
   };
 
-  const handleAddStop = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const placeId = e.target.value;
-    if (!placeId) return;
-    const place = availablePlaces.find(p => p.id === placeId);
-    if (place && !stops.find(s => s.id === placeId) && stops.length < 6) {
+  const handleToggleStop = (place: BucketLocation) => {
+    const existingIndex = stops.findIndex(s => s.id === place.id || s.place_id === place.place_id);
+    if (existingIndex !== -1) {
+      setStops(stops.filter((_, i) => i !== existingIndex));
+      setErrorStr(null);
+    } else {
+      if (stops.length >= 6) {
+        setErrorStr('Maximum 6 stops allowed per route. Unselect a stop to add another.');
+        return;
+      }
+      setErrorStr(null);
       setStops([...stops, toRouteStop(place)]);
     }
-    e.target.value = ''; // reset select
   };
 
   const handleRemove = (index: number) => {
@@ -332,14 +338,15 @@ export default function RouteBuilder({
     }
   };
 
-  const remainingPlaces = availablePlaces.filter(p => !stops.find(s => s.id === p.id));
   const builderAvailableCategories = Array.from(
-    new Set(remainingPlaces.map(p => (p.category || 'Attraction') as PlaceCategory))
+    new Set(availablePlaces.map(p => (p.category || 'Attraction') as PlaceCategory))
   );
 
-  const displayedPlaces = builderCategoryFilter === 'ALL'
-    ? remainingPlaces
-    : remainingPlaces.filter(p => (p.category || 'Attraction') === builderCategoryFilter);
+  const displayedPlaces = availablePlaces.filter(p => {
+    const matchesCategory = builderCategoryFilter === 'ALL' || (p.category || 'Attraction') === builderCategoryFilter;
+    const matchesSearch = !placeSearchQuery.trim() || p.name.toLowerCase().includes(placeSearchQuery.trim().toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -446,129 +453,256 @@ export default function RouteBuilder({
 
       {/* Stops list */}
       {stops.length > 0 && (
-        <SortableList
-          items={stops}
-          onReorder={handleMainReorder}
-          keyExtractor={(s) => s._instanceId}
-          renderItem={(stop, i, dragHandleProps, isDragging) => (
-            <div
-              className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs transition-all"
-              style={{
-                background: isDragging ? 'rgba(249,93,15,0.1)' : 'var(--color-surface-3)',
-                border: `1.5px solid ${isDragging ? 'rgba(249,93,15,0.4)' : 'rgba(255,255,255,0.07)'}`,
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="section-label">Route sequence (drag to reorder)</span>
+            <button
+              type="button"
+              onClick={() => {
+                setStops([]);
+                setErrorStr(null);
               }}
+              className="text-[10px] font-medium transition-colors"
+              style={{ color: '#6a6a76' }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#6a6a76')}
             >
+              Clear all
+            </button>
+          </div>
+          <SortableList
+            items={stops}
+            onReorder={handleMainReorder}
+            keyExtractor={(s) => s._instanceId}
+            renderItem={(stop, i, dragHandleProps, isDragging) => (
               <div
-                {...dragHandleProps}
-                className="cursor-grab active:cursor-grabbing outline-none flex-shrink-0"
-                style={{ color: '#3a3a42' }}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs transition-all"
+                style={{
+                  background: isDragging ? 'rgba(249,93,15,0.1)' : 'var(--color-surface-3)',
+                  border: `1.5px solid ${isDragging ? 'rgba(249,93,15,0.4)' : 'rgba(255,255,255,0.07)'}`,
+                }}
               >
-                <GripVertical size={14} />
-              </div>
-              <span
-                className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold flex-shrink-0 text-white"
-                style={{ background: '#f95d0f' }}
-              >
-                {i + 1}
-              </span>
-              <span className="flex-1 truncate" style={{ color: '#e8e8ec' }}>{stop.name}</span>
-              <button
-                onClick={() => handleRemove(i)}
-                className="p-0.5 rounded transition-colors flex-shrink-0"
-                style={{ color: '#4a4a54' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#4a4a54')}
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
-        />
-      )}
-
-      {/* Add stop */}
-      {stops.length < 6 && (
-        <div className="flex flex-col gap-2">
-          {/* Category filter pills */}
-          {builderAvailableCategories.length > 1 && (
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="section-label">Filter by category</span>
-                {builderCategoryFilter !== 'ALL' && (
-                  <button
-                    type="button"
-                    onClick={() => setBuilderCategoryFilter('ALL')}
-                    className="text-[10px] font-semibold"
-                    style={{ color: '#f95d0f' }}
-                  >
-                    Show all ({remainingPlaces.length})
-                  </button>
-                )}
-              </div>
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                <div
+                  {...dragHandleProps}
+                  className="cursor-grab active:cursor-grabbing outline-none flex-shrink-0"
+                  style={{ color: '#3a3a42' }}
+                  title="Drag to reorder"
+                >
+                  <GripVertical size={14} />
+                </div>
+                <span
+                  className="w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold flex-shrink-0 text-white"
+                  style={{ background: '#f95d0f' }}
+                >
+                  {i + 1}
+                </span>
+                <span className="flex-1 truncate" style={{ color: '#e8e8ec' }}>{stop.name}</span>
                 <button
                   type="button"
-                  onClick={() => setBuilderCategoryFilter('ALL')}
-                  className={`cat-pill ${builderCategoryFilter === 'ALL' ? 'active' : ''}`}
-                  style={builderCategoryFilter === 'ALL' ? { background: 'rgba(249,93,15,0.2)', borderColor: 'rgba(249,93,15,0.5)', color: '#fff' } : {}}
+                  onClick={() => handleRemove(i)}
+                  className="p-0.5 rounded transition-colors flex-shrink-0"
+                  style={{ color: '#4a4a54' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
+                  onMouseLeave={e => (e.currentTarget.style.color = '#4a4a54')}
+                  title="Remove stop"
                 >
-                  All ({remainingPlaces.length})
+                  <X size={12} />
                 </button>
-                {builderAvailableCategories.map((cat) => {
-                  const isSelected = builderCategoryFilter === cat;
-                  const catColor = getCategoryColor(cat);
-                  const catIcon = getCategoryIcon(cat);
-                  const count = remainingPlaces.filter(p => (p.category || 'Attraction') === cat).length;
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setBuilderCategoryFilter(isSelected ? 'ALL' : cat)}
-                      className="cat-pill"
-                      style={isSelected ? {
-                        background: `${catColor}20`,
-                        borderColor: catColor,
-                        color: '#fff',
-                      } : {}}
-                    >
-                      <CategoryIcon name={catIcon} size={10} />
-                      {cat} ({count})
-                    </button>
-                  );
-                })}
               </div>
-            </div>
-          )}
-
-          {/* Dropdown */}
-          <select
-            onChange={handleAddStop}
-            className="w-full text-xs px-3 py-2.5"
-            value=""
-          >
-            <option value="" disabled>
-              {builderCategoryFilter === 'ALL'
-                ? `Add a stop… (${remainingPlaces.length} available)`
-                : `Add ${builderCategoryFilter} stop… (${displayedPlaces.length} available)`}
-            </option>
-            {builderCategoryFilter === 'ALL' ? (
-              builderAvailableCategories.map(cat => (
-                <optgroup key={cat} label={cat}>
-                  {remainingPlaces
-                    .filter(p => (p.category || 'Attraction') === cat)
-                    .map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                </optgroup>
-              ))
-            ) : (
-              displayedPlaces.map(p => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))
             )}
-          </select>
+          />
         </div>
       )}
+
+      {/* Choose stops multi-select list */}
+      <div className="flex flex-col gap-2">
+        {/* Section header with selected count indicator */}
+        <div className="flex items-center justify-between">
+          <span className="section-label">
+            Choose stops from bucket list
+          </span>
+          <span
+            className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
+            style={{
+              background: stops.length >= 6 ? 'rgba(239,68,68,0.15)' : 'rgba(249,93,15,0.12)',
+              color: stops.length >= 6 ? '#f87171' : '#ff9a5c',
+              border: `1px solid ${stops.length >= 6 ? 'rgba(239,68,68,0.3)' : 'rgba(249,93,15,0.25)'}`,
+            }}
+          >
+            {stops.length >= 6 ? '6/6 (Max)' : `${stops.length}/6 selected`}
+          </span>
+        </div>
+
+        {/* Category filter pills */}
+        {builderAvailableCategories.length > 1 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setBuilderCategoryFilter('ALL')}
+              className={`cat-pill ${builderCategoryFilter === 'ALL' ? 'active' : ''}`}
+              style={builderCategoryFilter === 'ALL' ? { background: 'rgba(249,93,15,0.2)', borderColor: 'rgba(249,93,15,0.5)', color: '#fff' } : {}}
+            >
+              All ({availablePlaces.length})
+            </button>
+            {builderAvailableCategories.map((cat) => {
+              const isSelected = builderCategoryFilter === cat;
+              const catColor = getCategoryColor(cat);
+              const catIcon = getCategoryIcon(cat);
+              const count = availablePlaces.filter(p => (p.category || 'Attraction') === cat).length;
+              return (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setBuilderCategoryFilter(isSelected ? 'ALL' : cat)}
+                  className="cat-pill"
+                  style={isSelected ? {
+                    background: `${catColor}20`,
+                    borderColor: catColor,
+                    color: '#fff',
+                  } : {}}
+                >
+                  <CategoryIcon name={catIcon} size={10} />
+                  {cat} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Quick search if more than 4 places */}
+        {availablePlaces.length > 4 && (
+          <div className="relative">
+            <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: '#6a6a76' }} />
+            <input
+              type="text"
+              value={placeSearchQuery}
+              onChange={(e) => setPlaceSearchQuery(e.target.value)}
+              placeholder="Search places…"
+              className="w-full text-xs pl-7 pr-3 py-1.5 rounded-xl border"
+              style={{
+                background: 'var(--color-surface-2)',
+                borderColor: 'rgba(255,255,255,0.06)',
+                color: '#e8e8ec',
+              }}
+            />
+            {placeSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setPlaceSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 rounded transition-colors"
+                style={{ color: '#6a6a76' }}
+                onMouseEnter={e => (e.currentTarget.style.color = '#e8e8ec')}
+                onMouseLeave={e => (e.currentTarget.style.color = '#6a6a76')}
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Places list with small selection bubbles */}
+        {availablePlaces.length === 0 ? (
+          <div className="p-3.5 rounded-xl text-center" style={{ background: 'var(--color-surface-2)', border: '1px dashed rgba(255,255,255,0.1)' }}>
+            <p className="text-xs font-medium" style={{ color: '#8a8a96' }}>
+              No places in bucket list yet.
+            </p>
+            <p className="text-[10px] mt-1" style={{ color: '#6a6a76' }}>
+              Add places to your bucket list to start creating routes.
+            </p>
+          </div>
+        ) : displayedPlaces.length === 0 ? (
+          <div className="p-3 rounded-xl text-center" style={{ background: 'var(--color-surface-2)', border: '1px dashed rgba(255,255,255,0.08)' }}>
+            <p className="text-xs" style={{ color: '#8a8a96' }}>
+              No places match your search.
+            </p>
+            <button
+              type="button"
+              onClick={() => { setBuilderCategoryFilter('ALL'); setPlaceSearchQuery(''); }}
+              className="text-[10px] font-semibold mt-1"
+              style={{ color: '#f95d0f' }}
+            >
+              Clear filters
+            </button>
+          </div>
+        ) : (
+          <div className="max-h-52 overflow-y-auto flex flex-col gap-1.5 pr-1 no-scrollbar">
+            {displayedPlaces.map((place) => {
+              const stopIndex = stops.findIndex(s => s.id === place.id || s.place_id === place.place_id);
+              const isChosen = stopIndex !== -1;
+              const sequenceNum = stopIndex + 1;
+              const isMaxReached = stops.length >= 6 && !isChosen;
+              const catColor = getCategoryColor((place.category || 'Attraction') as PlaceCategory);
+              const catIcon = getCategoryIcon((place.category || 'Attraction') as PlaceCategory);
+
+              return (
+                <button
+                  key={place.id}
+                  type="button"
+                  onClick={() => handleToggleStop(place)}
+                  disabled={isMaxReached}
+                  className={`w-full flex items-center justify-between gap-2.5 px-3 py-2 rounded-xl text-left transition-all ${
+                    isMaxReached ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer hover:border-white/15'
+                  }`}
+                  style={{
+                    background: isChosen ? 'rgba(249,93,15,0.08)' : 'var(--color-surface-2)',
+                    border: `1.5px solid ${isChosen ? 'rgba(249,93,15,0.35)' : 'rgba(255,255,255,0.06)'}`,
+                  }}
+                >
+                  {/* Left: Category icon & Place metadata */}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div
+                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
+                      style={{
+                        background: `${catColor}18`,
+                        color: catColor,
+                        border: `1px solid ${catColor}30`,
+                      }}
+                    >
+                      <CategoryIcon name={catIcon} size={11} />
+                    </div>
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span
+                        className="text-xs font-semibold truncate leading-tight"
+                        style={{ color: isChosen ? '#ff9a5c' : '#e8e8ec' }}
+                      >
+                        {place.name}
+                      </span>
+                      <div className="flex items-center gap-2 text-[10px]" style={{ color: '#6a6a76' }}>
+                        <span className="truncate">{place.category || 'Attraction'}</span>
+                        {place.rating != null && (
+                          <span className="flex items-center gap-0.5 text-[#fbbf24] shrink-0 font-medium">
+                            ★ {place.rating.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Small bubble that fills when chosen */}
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all duration-200"
+                    style={isChosen ? {
+                      background: 'linear-gradient(135deg, #ff7a38 0%, #f95d0f 100%)',
+                      boxShadow: '0 2px 8px rgba(249,93,15,0.35)',
+                      border: '1.5px solid #ff9a5c',
+                    } : {
+                      background: 'rgba(255,255,255,0.03)',
+                      border: '1.5px solid rgba(255,255,255,0.22)',
+                    }}
+                    title={isChosen ? `Stop #${sequenceNum} (click to remove)` : 'Click to add stop'}
+                  >
+                    {isChosen ? (
+                      <span className="text-[10px] font-black text-white leading-none">
+                        {sequenceNum}
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Travel mode dropdown + action buttons */}
       <div className="flex items-center justify-between gap-2 pt-1">

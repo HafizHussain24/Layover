@@ -788,6 +788,26 @@ _(ideas out of scope, to be added here rather than in code)_
 - Blockers / waiting on user: None.
 - Next: User test in browser.
 
+### Entry 43 | UX Enhancement | Multi-Select Route Stops with Selection Bubbles
+- Time: Post-Phase 5
+- User request: "The way choosing locations for creating a route works is very inconvenient, we have to click add a stop for each location and the drop down closes. Instead make it so that we can select multiple stops together by adding a small bubble at the end that gets filled if it is chosen."
+- Done:
+  - **Replaced native `<select>` dropdown with interactive Multi-Select list ([src/components/RouteBuilder.tsx](file:///d:/Projects/Layover/src/components/RouteBuilder.tsx)):**
+    - Eliminated the closing HTML dropdown that required opening and picking one stop at a time.
+    - Added an always-visible, scrollable list of bucket locations with real-time selection bubbles on the right.
+    - **Selection Bubble Mechanics:**
+      - **Unselected:** Hollow circular outline (`border-2 border-white/20`).
+      - **Chosen:** Filled vibrant gradient bubble (`#ff7a38` to `#f95d0f`) with the stop's sequence order number (`1`, `2`, `3`...).
+    - Tapping any place row or bubble instantly toggles selection in/out of the route stops list without closing the menu.
+    - Maintained synchronized two-way state:
+      - Drag-and-drop `SortableList` above reflects selected stops and supports instant reordering (which automatically updates sequence numbers inside filled bubbles).
+      - Clicking `X` or "Clear all" in the sequence list un-fills bubbles in the picker below.
+    - Added category filter pills (`All`, `Attraction`, `Food`, etc.) and a quick search bar for rooms with multiple bucket spots.
+    - Added max 6 stops guard with visual `X/6 selected` count pill and polite feedback when the cap is reached.
+- Verified: `npm run build` compiled cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+- Blockers / waiting on user: None.
+- Next: Awaiting user testing and feedback.
+
 
 
 
