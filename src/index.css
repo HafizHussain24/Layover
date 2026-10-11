@@ -54,8 +54,12 @@
    ============================================================ */
 *, *::before, *::after { box-sizing: border-box; }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html, body, #root {
-  height: 100%;
+  min-height: 100%;
   margin: 0;
   padding: 0;
   background-color: var(--color-surface-0);
@@ -572,4 +576,21 @@ input::placeholder { color: #5a5a64; }
   pointer-events: none;
   opacity: 0.4;
   z-index: 0;
+}
+
+/* Bento card styles */
+.bento-card {
+  background: rgba(28, 28, 31, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  border-radius: var(--radius-xl);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.bento-card:hover {
+  border-color: rgba(249, 93, 15, 0.3);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+
+.gradient-glow-orange {
+  box-shadow: 0 0 50px -10px rgba(249, 93, 15, 0.25);
 }

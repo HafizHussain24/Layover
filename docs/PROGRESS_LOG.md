@@ -805,8 +805,48 @@ _(ideas out of scope, to be added here rather than in code)_
     - Added category filter pills (`All`, `Attraction`, `Food`, etc.) and a quick search bar for rooms with multiple bucket spots.
     - Added max 6 stops guard with visual `X/6 selected` count pill and polite feedback when the cap is reached.
 - Verified: `npm run build` compiled cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+### Entry 44 | Design & Product Polish | Comprehensive Professional Landing Page
+- Time: Post-Phase 5
+- User request: "the current home page feels like a placeholder. Develop a proper landing page as the homepage in the style of the website. Make it look clean, professional and friendly"
+- Done:
+  - **Full Landing Page Redesign ([src/pages/Home.tsx](file:///d:/Projects/Layover/src/pages/Home.tsx)):**
+    - **Sticky Glass Navbar:** WayMark branding, anchor navigation links (Features, How It Works, AI Scout, FAQ), "Try Live Demo" quick action, and integrated `UserMenu`.
+    - **High-Impact Hero Section:**
+      - Clear, friendly value proposition: *"Group trips friends actually enjoy planning. Without the group chat chaos."*
+      - Key trust pillars: Instant guest access (no login wall), live multiplayer sync, and Google Routes v2 optimization.
+      - **Interactive Trip Launcher Card:** Segmented control switcher between *Create New Trip* (with Google Places destination autocomplete and status indicators) and *Join with Code / Link*.
+    - **Your Saved Trips Dashboard:** Beautifully cards-based view of user's past and recent trips with destination badges, creation dates, quick resume, and delete actions.
+    - **Interactive Visual App Canvas Showcase:** A simulated browser window demonstrating the split-screen room interface with live member presence, bucket list consensus voting, and dark-mode route map.
+    - **3-Step "How It Works" Section:** Clear breakdown of (1) Create & Share Link, (2) Pin Places & Upvote, and (3) Build Routes with Bubble Pickers.
+    - **Bento Grid of Core Features:** Deep-dive cards for Realtime Websocket Sync, Multi-Stop Route Optimizer, Gemini AI Scout with rating/review filters, Instagram Link Importer, and Hybrid Traveler Auth.
+    - **"Before vs. After" Comparison:** Friendly contrast between chat chaos and WayMark clarity.
+    - **Interactive FAQ Accordion:** Clean answers to top user questions (guest sign-in, route optimization, AI grounding, pricing).
+    - **Bottom CTA Banner & Polished Footer:** High-conversion trip launcher trigger, demo link, technology credits, and copyright.
+  - **Design System Enhancements ([src/index.css](file:///d:/Projects/Layover/src/index.css)):**
+    - Added `scroll-behavior: smooth` for elegant anchor navigation.
+    - Added `.bento-card` and `.gradient-glow-orange` glassmorphism utility classes.
+- Verified: `npm run build` compiled cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
 - Blockers / waiting on user: None.
-- Next: Awaiting user testing and feedback.
+- Next: Awaiting user review and feedback.
+
+### Entry 45 | Bug Fix | AI Scout Venue Grounding & Street/City Name Overwrite Fix
+- Time: Post-Phase 5
+- User report: "i searched for burger spots in the ai scout and this is the responnse i got. Why is there random locations being suggested? [Screenshot showing: Beyondburg Inc. Calicut, PT Usha Road (Attraction), Kozhikode (Attraction)]"
+- Root Cause Identified:
+  1. **Google Autocomplete Geocode Priority:** When Gemini included street/neighborhood details (e.g. `"Burger Lounge PT Usha Road Kozhikode"`), Google Autocomplete's top suggestion was the street `PT Usha Road` (`[route, geocode]`) rather than the restaurant venue. Similarly, when a venue wasn't indexed verbatim, suggestion #0 was the city `Kozhikode` (`[locality, political]`).
+  2. **Blind Display Name & Category Overwrite:** `groundPlaceWithGoogle` in `AIScout.tsx` blindly took `res.suggestions[0]` and used `place.displayName` and `place.primaryType`. This completely replaced the actual burger restaurant names with `"PT Usha Road"` and `"Kozhikode"`, and defaulted the categories to `"Attraction"`.
+- Fixes Applied:
+  - **Filter Out Geocodes & Regional Boundaries ([src/components/AIScout.tsx](file:///d:/Projects/Layover/src/components/AIScout.tsx)):**
+    - Added `isGeocodeOrRegion` validator detecting `route`, `street_address`, `locality`, `sublocality`, `political`, `administrative_area`, etc.
+    - `groundPlaceWithGoogle` now filters Google Places autocomplete suggestions, selecting only real commercial establishments/venues (`establishment`, `point_of_interest`).
+    - If Google only returns a street or city, it is discarded so it never overwrites the AI's venue name or coordinates.
+    - Category resolution now preserves Gemini's specific category (`Food`, `Cafe`, `Dessert`) if Google's primary type is generic `point_of_interest`.
+  - **Refined AI System Prompt ([src/lib/gemini.ts](file:///d:/Projects/Layover/src/lib/gemini.ts)):**
+    - Explicitly instructed Gemini to never suggest streets, roads, neighborhoods, or cities as `place_name`.
+    - Enforced `search_query` format strictly as `<Exact Place Name> <City/Destination>` without street names to avoid map ranking collisions.
+- Verified: `npm run build` passed cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+- Blockers / waiting on user: None.
+- Next: Awaiting user feedback.
 
 
 

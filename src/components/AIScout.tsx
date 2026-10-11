@@ -87,29 +87,85 @@ export default function AIScout({
     } catch {}
   };
 
+  // Helper to detect generic roads, streets, cities, and administrative regions
+  const isGeocodeOrRegion = (types?: string[], primaryType?: string): boolean => {
+    const regionTypes = new Set([
+      'route',
+      'street_address',
+      'locality',
+      'sublocality',
+      'political',
+      'administrative_area_level_1',
+      'administrative_area_level_2',
+      'administrative_area_level_3',
+      'country',
+      'postal_code',
+      'intersection',
+    ]);
+    if (primaryType && regionTypes.has(primaryType)) return true;
+    if (types && types.length > 0) {
+      const isEstablishment = types.includes('establishment') || types.includes('point_of_interest');
+      if (!isEstablishment && types.some(t => regionTypes.has(t))) return true;
+    }
+    return false;
+  };
+
   // Resolve an AI suggestion against Google Places API to extract place_id, lat, lng, rating
   const groundPlaceWithGoogle = async (
     sugg: AISuggestion
   ): Promise<PlacePreview | null> => {
     if (!placesLib) return null;
     try {
-      const searchInput = sugg.search_query || `${sugg.place_name} ${destinationLabel || ''}`.trim();
-      const request: any = { input: searchInput };
-      if (destination?.lat && destination?.lng) {
-        request.locationBias = {
-          center: { lat: destination.lat, lng: destination.lng },
-          radius: 50000,
-        };
+      // Prioritize clean venue name + destination city to avoid road/street names overriding establishment
+      const cleanVenueQuery = `${sugg.place_name} ${destinationLabel || ''}`.trim();
+      const queriesToTry = [cleanVenueQuery];
+      if (sugg.search_query && sugg.search_query.toLowerCase() !== cleanVenueQuery.toLowerCase()) {
+        queriesToTry.push(sugg.search_query.trim());
       }
 
-      const res = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
-      const prediction = res.suggestions?.[0]?.placePrediction;
-      if (!prediction?.placeId) return null;
+      let validPrediction: any = null;
 
-      const place = new placesLib.Place({ id: prediction.placeId });
+      for (const inputQuery of queriesToTry) {
+        const request: any = { input: inputQuery };
+        if (destination?.lat && destination?.lng) {
+          request.locationBias = {
+            center: { lat: destination.lat, lng: destination.lng },
+            radius: 50000,
+          };
+        }
+
+        const res = await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+        const suggestions = res.suggestions || [];
+
+        // Find the first suggestion that is an actual establishment/venue, NOT a street or city
+        const matchingSugg = suggestions.find(s => {
+          const types = s.placePrediction?.types;
+          return !isGeocodeOrRegion(types);
+        });
+
+        if (matchingSugg?.placePrediction?.placeId) {
+          validPrediction = matchingSugg.placePrediction;
+          break;
+        }
+      }
+
+      if (!validPrediction?.placeId) return null;
+
+      const place = new placesLib.Place({ id: validPrediction.placeId });
       await place.fetchFields({
         fields: ['id', 'displayName', 'formattedAddress', 'location', 'primaryType', 'types', 'rating', 'userRatingCount'],
       });
+
+      // Guard: Double check the fetched place is not a generic street or city
+      if (isGeocodeOrRegion(place.types, place.primaryType || undefined)) {
+        return null;
+      }
+
+      const resolvedCat = resolveCategory(place.primaryType, place.types, place.displayName);
+      // If resolvedCat is fallback 'Attraction' but Gemini had specific 'Food', 'Cafe', etc., preserve Gemini's category
+      const category = (resolvedCat === 'Attraction' && sugg.category !== 'Attraction')
+        ? sugg.category
+        : (resolvedCat || sugg.category);
 
       return {
         place_id: place.id,
@@ -117,7 +173,7 @@ export default function AIScout({
         address: place.formattedAddress ?? undefined,
         lat: place.location?.lat() ?? (destination?.lat ?? 0),
         lng: place.location?.lng() ?? (destination?.lng ?? 0),
-        category: resolveCategory(place.primaryType, place.types, place.displayName) || sugg.category,
+        category,
         rating: place.rating ?? undefined,
         review_count: place.userRatingCount ?? undefined,
       };

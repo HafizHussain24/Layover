@@ -139,12 +139,16 @@ ${existingList}
 User Query: "${userPrompt}"
 
 Suggest 3 to 5 specific, REAL, highly-rated places that best fulfill their request.
-For each place:
-1. "place_name": Exact official place name (e.g., "Top Station", "Eravikulam National Park").
+CRITICAL RULES FOR RECOMMENDATIONS:
+1. "place_name": MUST ALWAYS be the exact official name of a specific, individual venue, restaurant, cafe, shop, or named point of interest (e.g., "Beyondburg Inc.", "Burger Lounge", "The Burger Junction").
+   - NEVER suggest a street, road, or avenue (e.g., NEVER "PT Usha Road" or "MG Road").
+   - NEVER suggest a neighborhood, district, or the city itself (e.g., NEVER "Kozhikode", "Calicut", "Downtown").
+   - If the user asks for food, burgers, cafes, or drinks, every single suggestion MUST be a specific commercial eatery.
 2. "category": Must be one of ["Food", "Dessert", "Cafe", "Attraction", "Nature", "Shopping", "Nightlife", "Accommodation", "Transport"].
 3. "description": 1 to 2 engaging, concise sentences explaining what it is and why they should visit.
-4. "search_query": Exact location-grounded Google search query (e.g., "Top Station Munnar Kerala").
-5. "highlight": A 2-4 word punchy badge highlight (e.g., "High-Altitude Trek", "Famous Burgers", "Scenic Waterfall").`;
+4. "search_query": Format strictly as "<Exact Place Name> <City/Destination>" (e.g., "Burger Lounge Kozhikode", "Beyondburg Calicut").
+   - DO NOT include street names, road names, or generic phrases (e.g., do NOT write "Burger Lounge PT Usha Road" or "burger spot in Kozhikode") as this causes map search to match the road instead of the restaurant.
+5. "highlight": A 2-4 word punchy badge highlight (e.g., "Smash Burgers", "Scenic Viewpoint", "Artisanal Coffee").`;
 
   try {
     const res = await fetch(
