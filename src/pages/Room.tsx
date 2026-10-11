@@ -25,7 +25,7 @@ import UserMenu from '../components/UserMenu';
 import { getCategoryColor, getCategoryIcon, type PlaceCategory } from '../lib/categories';
 import CategoryIcon from '../components/CategoryIcon';
 import {
-  Compass, X, Gem, BookMarked, Route, Sparkles,
+  Compass, X, BookMarked, Route, Sparkles,
   Loader2, AlertTriangle, ArrowLeft, Trash2,
 } from 'lucide-react';
 
@@ -43,7 +43,6 @@ export default function Room() {
   
   const [showPrompt, setShowPrompt] = useState(false);
   const [addingPlace, setAddingPlace] = useState(false);
-  const [showHiddenGems, setShowHiddenGems] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<PlaceCategory | 'ALL'>('ALL');
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [editingRoute, setEditingRoute] = useState<any | null>(null);
@@ -156,10 +155,6 @@ export default function Room() {
   const availableCategories = Object.keys(categoryCounts) as PlaceCategory[];
 
   const filteredBucket = bucketItems.filter(item => {
-    if (showHiddenGems) {
-      const isGem = (item.rating ?? 0) >= 4.5 && (item.review_count ?? 0) > 0 && (item.review_count ?? 0) < 1000;
-      if (!isGem) return false;
-    }
     if (selectedCategory !== 'ALL' && (item.category || 'Attraction') !== selectedCategory) {
       return false;
     }
@@ -681,25 +676,6 @@ export default function Room() {
                     adding={addingPlace}
                     destination={activeSearchDestination}
                   />
-                  
-                  {/* Hidden Gems Toggle */}
-                  <label className="flex items-center justify-between cursor-pointer group">
-                    <div className="flex items-center gap-2">
-                      <Gem size={12} style={{ color: showHiddenGems ? '#f95d0f' : '#4a4a54' }} />
-                      <span className="text-xs font-medium transition-colors"
-                            style={{ color: showHiddenGems ? '#e8e8ec' : '#6a6a76' }}>
-                        Hidden Gems
-                      </span>
-                    </div>
-                    <label className="toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={showHiddenGems}
-                        onChange={e => setShowHiddenGems(e.target.checked)}
-                      />
-                      <span className="toggle-track" />
-                    </label>
-                  </label>
 
                   {/* Category filter pills */}
                   {availableCategories.length > 0 && (
@@ -766,10 +742,9 @@ export default function Room() {
                     items={filteredBucket} 
                     onRemove={removeItem} 
                     onUpdateCategory={updateCategory}
-                    isFiltered={selectedCategory !== 'ALL' || showHiddenGems}
+                    isFiltered={selectedCategory !== 'ALL'}
                     onClearFilter={() => {
                       setSelectedCategory('ALL');
-                      setShowHiddenGems(false);
                     }}
                   />
                 </div>

@@ -28,12 +28,12 @@
 ### 📍 2. Smart Place Discovery & Instagram Extraction
 - **Google Places Search**: Search places autocomplete tailored to the room's destination, retrieving live ratings, review counts, photos, and exact coordinates.
 - **Instagram Reel Parser**: Paste links from travel and food reels to parse location names and instantly add them to the group bucket list.
-- **"Hidden Gems" Filter**: Algorithmic filter that surfaces high-rated (≥4.3★) places with moderate review volume, filtering out commercial tourist traps.
 - **Categorization**: Color-coded category tags (*Nature, Food, Cafe, Dessert, Attraction, Shopping, Nightlife, Accommodation, Transport*).
 
 ### 🤖 3. AI Travel Scout (Google Gemini)
 - **Local Insider Intelligence**: Natural language recommendations powered by `gemini-3.8-flash` tailored to the trip's destination.
 - **Automated Google Grounding**: Every AI recommendation is automatically resolved against Google Places API to verify real-world coordinates and details.
+- **Rating & Review Filtering**: Filter AI suggestions in real-time by rating range (e.g. 4.0+, 4.5+ ★) and review volume (e.g. <500 reviews for authentic offbeat spots).
 - **1-Click Add**: Add recommended spots directly to the group bucket list with a single click.
 
 ### 🚗 4. Multi-Stop Route Builder & Optimization

@@ -769,6 +769,26 @@ _(ideas out of scope, to be added here rather than in code)_
 - Blockers / waiting on user: None.
 - Next: Ready for production showcase.
 
+### Entry 42 | Feature Evolution | AI Scout Rating & Review Filters & Hidden Gems Removal
+- Time: Post-Phase 5
+- User request: "remove the hidden gem feature from the bucket list tab and instead add a way to filter the aiscout response to only show places with a specified rating range(eg: 4+ stars) and a no of review range (eg: <500 review). Only implement if it is possible if not just say no."
+- Done:
+  - **Removed "Hidden Gems" from Bucket List ([src/pages/Room.tsx](file:///d:/Projects/Layover/src/pages/Room.tsx)):**
+    - Removed `showHiddenGems` state, toggle switch, and filter branch from `filteredBucket`.
+    - Simplified category filtering and clean reset.
+  - **Implemented Rating & Review Count Filtering in AI Scout ([src/components/AIScout.tsx](file:///d:/Projects/Layover/src/components/AIScout.tsx)):**
+    - Leverages real, verified Google Places API data (`place.rating` and `place.userRatingCount`) fetched during AI grounding.
+    - Added dedicated filter controls bar right above recommendations:
+      - **Rating Range Dropdown**: `Any Rating`, `★ 4.0+ Stars`, `★ 4.3+ Stars`, `★ 4.5+ Stars`, `★ 4.7+ Stars`.
+      - **Review Count Dropdown**: `Any Review Count`, `< 500 Reviews (Offbeat/Local)`, `< 1,000 Reviews`, `1,000+ Reviews (Popular)`.
+    - Added active filter badge showing match count (e.g. `Filtered: 3 of 5`), one-click "Clear filters" action, and empty state fallback when no suggestions match the selected criteria.
+  - **Updated Documentation ([README.md](file:///d:/Projects/Layover/README.md)):**
+    - Reflected the new AI Scout rating & review volume filter suite.
+- Verified: `npm run build` compiled cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+- Blockers / waiting on user: None.
+- Next: User test in browser.
+
+
 
 
 

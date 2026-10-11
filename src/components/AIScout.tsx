@@ -8,7 +8,7 @@ import type { PlacePreview } from './SearchBar';
 import CategoryIcon from './CategoryIcon';
 import {
   Sparkles, Search, Plus, Check, ExternalLink, Star,
-  Loader2, Compass, AlertCircle, RefreshCw, MapPin, X
+  Loader2, Compass, AlertCircle, RefreshCw, MapPin, X, SlidersHorizontal,
 } from 'lucide-react';
 
 interface AIScoutProps {
@@ -58,6 +58,8 @@ export default function AIScout({
     return [];
   });
 
+  const [minRating, setMinRating] = useState<number>(0);
+  const [reviewFilter, setReviewFilter] = useState<'ALL' | '<500' | '<1000' | '1000+'>('ALL');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set());
@@ -222,6 +224,37 @@ export default function AIScout({
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`;
   };
 
+  const filteredSuggestions = suggestions.filter((item) => {
+    if (item.isResolving) return true;
+
+    const rating = item.resolvedPlace?.rating;
+    const reviewCount = item.resolvedPlace?.review_count;
+
+    // Rating filter
+    if (minRating > 0) {
+      if (typeof rating !== 'number' || rating < minRating) {
+        return false;
+      }
+    }
+
+    // Review count filter
+    if (reviewFilter === '<500') {
+      if (typeof reviewCount !== 'number' || reviewCount >= 500) {
+        return false;
+      }
+    } else if (reviewFilter === '<1000') {
+      if (typeof reviewCount !== 'number' || reviewCount >= 1000) {
+        return false;
+      }
+    } else if (reviewFilter === '1000+') {
+      if (typeof reviewCount !== 'number' || reviewCount < 1000) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   return (
     <div className="flex flex-col h-full overflow-y-auto p-4 gap-4">
       {/* ── Header Banner ── */}
@@ -381,7 +414,97 @@ export default function AIScout({
             </div>
           </div>
 
-          {suggestions.map((item, idx) => {
+          {/* Filters Bar: Rating & Review Count */}
+          <div className="flex flex-col gap-2 p-2.5 rounded-xl border"
+               style={{ background: 'var(--color-surface-3)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: '#ff9a5c' }}>
+                <SlidersHorizontal size={12} />
+                Filter Places
+                {(minRating > 0 || reviewFilter !== 'ALL') && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold ml-1"
+                        style={{ background: 'rgba(249,93,15,0.2)', color: '#ff9a5c' }}>
+                    {filteredSuggestions.length} of {suggestions.length}
+                  </span>
+                )}
+              </span>
+              {(minRating > 0 || reviewFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => { setMinRating(0); setReviewFilter('ALL'); }}
+                  className="text-[10px] font-medium transition-colors hover:underline"
+                  style={{ color: '#f95d0f' }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {/* Rating filter dropdown */}
+              <div>
+                <label className="text-[10px] block mb-1 font-medium" style={{ color: '#6a6a76' }}>
+                  Rating Range
+                </label>
+                <select
+                  value={minRating}
+                  onChange={(e) => setMinRating(Number(e.target.value))}
+                  className="w-full text-xs px-2 py-1.5 rounded-lg border cursor-pointer font-medium"
+                  style={{
+                    background: 'var(--color-surface-2)',
+                    borderColor: minRating > 0 ? 'rgba(249,93,15,0.4)' : 'rgba(255,255,255,0.08)',
+                    color: minRating > 0 ? '#ff9a5c' : '#e8e8ec',
+                  }}
+                >
+                  <option value={0}>Any Rating</option>
+                  <option value={4.0}>★ 4.0+ Stars</option>
+                  <option value={4.3}>★ 4.3+ Stars</option>
+                  <option value={4.5}>★ 4.5+ Stars</option>
+                  <option value={4.7}>★ 4.7+ Stars</option>
+                </select>
+              </div>
+
+              {/* Review count filter dropdown */}
+              <div>
+                <label className="text-[10px] block mb-1 font-medium" style={{ color: '#6a6a76' }}>
+                  Review Count
+                </label>
+                <select
+                  value={reviewFilter}
+                  onChange={(e) => setReviewFilter(e.target.value as any)}
+                  className="w-full text-xs px-2 py-1.5 rounded-lg border cursor-pointer font-medium"
+                  style={{
+                    background: 'var(--color-surface-2)',
+                    borderColor: reviewFilter !== 'ALL' ? 'rgba(249,93,15,0.4)' : 'rgba(255,255,255,0.08)',
+                    color: reviewFilter !== 'ALL' ? '#ff9a5c' : '#e8e8ec',
+                  }}
+                >
+                  <option value="ALL">Any Review Count</option>
+                  <option value="<500">&lt; 500 Reviews (Offbeat)</option>
+                  <option value="<1000">&lt; 1,000 Reviews</option>
+                  <option value="1000+">1,000+ Reviews (Popular)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {filteredSuggestions.length === 0 ? (
+            <div className="p-4 rounded-xl text-center border flex flex-col items-center gap-1.5"
+                 style={{ background: 'var(--color-surface-2)', borderColor: 'rgba(255,255,255,0.06)' }}>
+              <p className="text-xs font-semibold" style={{ color: '#e8e8ec' }}>No places match selected filters</p>
+              <p className="text-[11px]" style={{ color: '#6a6a76' }}>
+                None of the {suggestions.length} places meet {minRating > 0 ? `★ ${minRating}+ rating` : ''} {minRating > 0 && reviewFilter !== 'ALL' ? 'and ' : ''} {reviewFilter !== 'ALL' ? `${reviewFilter} reviews` : ''}.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setMinRating(0); setReviewFilter('ALL'); }}
+                className="btn btn-secondary !py-1 !px-3 text-xs mt-1"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            filteredSuggestions.map((item, idx) => {
             const inBucket = isAlreadyInBucket(item);
             const isAdding = addingPlace && addingCardName === item.place_name;
             const category = item.resolvedPlace?.category || item.category;
@@ -495,7 +618,7 @@ export default function AIScout({
                 </div>
               </div>
             );
-          })}
+          }))}
         </div>
       )}
 
