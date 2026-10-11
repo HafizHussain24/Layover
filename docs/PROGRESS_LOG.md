@@ -753,6 +753,23 @@ _(ideas out of scope, to be added here rather than in code)_
 - Blockers / waiting on user: None.
 - Next: Project is fully rebranded to WayMark.
 
+### Entry 41 | Documentation | Comprehensive Project README
+- Time: Post-Phase 5
+- User request: "create a proper readme file that explains the project."
+- Done:
+  - **Authored Production-Grade README ([README.md](file:///d:/Projects/Layover/README.md)):**
+    - High-level overview and problem/solution statement.
+    - Comprehensive breakdown of all core features (Realtime Multiplayer, Google Places Autocomplete, Instagram link parser, "Hidden Gems" filter, AI Scout with Google Grounding, Google Routes API v2 engine with order optimization, democratic voting, hybrid auth, My Trips dashboard, offline demo mode).
+    - Architecture diagram and technology stack table (React 19, TypeScript, Vite, Tailwind CSS v4, Supabase, Google Maps Platform, Gemini Flash).
+    - Detailed Quick Start guide (prerequisites, cloning, `.env.local` configuration, and Supabase SQL migrations).
+    - Step-by-step Vercel production deployment walkthrough with environment variable config instructions.
+    - Demo mode walkthrough (`?demo=1`) for instant pitches.
+    - Clean repository folder structure overview.
+- Verified: `npm run build` completed cleanly with 0 TypeScript/bundler errors. Dev server running on `http://localhost:5174/`.
+- Blockers / waiting on user: None.
+- Next: Ready for production showcase.
+
+
 
 
 
